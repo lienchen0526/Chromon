@@ -1,4 +1,5 @@
 from typing import Dict, List, TypedDict, Optional, Any, Literal
+import enum
 
 class Browser(object):
     BrowserContextID = str
@@ -53,6 +54,7 @@ class Page(object):
 class Target(object):
     TargetID = str
     SessionID = str
+    ValidTypes = ('page', 'iframe', 'browser', 'script')
 
     TargetInfo = TypedDict(
         "TargetInfo",

@@ -4,6 +4,7 @@ import chrometypes as Types
 import json
 import asyncio
 import copy
+from urllib.parse import urlparse
 from core import ChromeBridge
 
 class Handler(object):
@@ -53,7 +54,6 @@ class Handler(object):
             async with cls.cmd_lock:
                 command_origin_pair = cls._pending_command.pop(mid, None)
             if not command_origin_pair:
-                #print(f"[In {cls}] Replied Command handler not found. maybe is spark from ChroMo")
                 return None
             await command_origin_pair[0].catchReply(command_origin_pair[1], msg)
             return None
@@ -106,7 +106,12 @@ class TargetAttachedHandler(Handler, interested_event = "Target.attachedToTarget
         async with super().trgt_session_lock:
             super()._target_session[target_id] = session_id
 
-        print(f"[In {self.__class__}] type: {type_} tid: {target_id[:10]} url: {url} x x x sid: {session_id[:10]}")
+        well_msg = {
+            "targetId": target_id,
+            "sessionId": session_id
+        }
+
+        print(f"[Target Attached]: {well_msg}")
         await self.initTarget(targetId = target_id)
         return None
     
@@ -169,20 +174,16 @@ class TargetCreatedHandler(Handler, interested_event = "Target.targetCreated"):
         """
         Known Issue: Multiple Creation of single target event will receive.
         """
-        #peek = copy.deepcopy(msg)
-        #peek = copy.deepcopy(msg)
-        #peek["params"]["targetId"] = msg["params"]["targetInfo"]["targetId"]
-        #peek["params"].pop("targetInfo")
-        #print(f"[In {self}] Start to handle msg: {peek}")
 
         t: Types.Target.TargetInfo = msg.get('params').get('targetInfo')
-        
+        t["url"] = urlparse(url = t["url"])._asdict()
+
         if not t.get('attached'):
-            if t.get('type') == 'iframe' or t.get('type') == 'page' or t.get('type') == 'script':
+            if t.get('type') in Types.Target.ValidTypes:
                 async with self.trgt_session_lock:
                     _pending = self._target_session.get(t.get("targetId"), None)
                 if not _pending:
-                    print(f"[In {self.__class__}] type: {t.get('type')} tid: {t.get('targetId')[:10]} title: {t.get('title')[:10]} url: {t.get('url')[:10]} attached: {t.get('attached')} {t.get('openerFrameId')}")
+                    print(f"[New Target Created] {t}")
                     await self._attachToTarget(t)
                 else:
                     # There are same Target Creation in previous
@@ -205,8 +206,6 @@ class TargetCreatedHandler(Handler, interested_event = "Target.targetCreated"):
     async def _attachToTarget(self, t: Types.Target.TargetInfo) -> None:
         async with self.trgt_session_lock:
             self._target_session[t.get("targetId")] = "Pending"
-        self.counter += 1
-        print(f"[In {self}] Trying attach to tid: {t.get('targetId')} with num: {self.counter}")
         method = "Target.attachToTarget"
         params = {
             "targetId": t.get("targetId"),
@@ -233,7 +232,12 @@ class targetInfoChangeHandler(Handler, interested_event = "Target.targetInfoChan
         if not sess_id == msg.get('sessionId', None):
             return None
         
-        print(f"[In {self}] TargetInfo change to: {msg}")
+        t["url"] = urlparse(url = t["url"])._asdict()
+        well_msg = {
+            "targetId": t.get('targetId'),
+            "targetInfo": t
+        }
+        print(f"[Target Update to]: {well_msg}")
         return None
     
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):
@@ -253,7 +257,11 @@ class targetDestroyHandler(Handler, interested_event = "Target.targetDestroyed")
         if not sessid:
             pass
         else:
-            print(f"[In {self}]: TID: {tid} sid: {sessid}")
+            well_msg = {
+                "targetId": tid,
+                "sessionId": sessid
+            }
+            print(f"[Target Destroyed]: {well_msg}")
             pass
         return None
 

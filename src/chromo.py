@@ -1,12 +1,22 @@
+import asyncio
+import argparse
+
 from core import ChromeBridge
 import  chrometypes as Types
 from handlers import Handler
-import asyncio
 
 class ChroMo(object):
     
-    def __init__(self):
-        self.chrome = ChromeBridge()
+    def __init__(self, args: argparse.Namespace):
+        if not args.debugeehost:
+            args.debugeehost = "localhost"
+        if not args.debugeeport:
+            args.debugeeport = 9222
+        
+        self.chrome = ChromeBridge(
+            host = args.debugeehost,
+            port = args.debugeeport
+        )
         self.handler_host = Handler(interface = self.chrome)
 
     def attachToBrowser(self) -> None:
@@ -30,9 +40,18 @@ class ChroMo(object):
                 pass
         return None
 
-async def main():
-    chromo = ChroMo()
+async def main(args: argparse.Namespace):
+    
+    chromo = ChroMo(args = args)
     await asyncio.gather(chromo.entrypoint())
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(
+        description = "Chromo audit argument parser")
+    parser.add_argument("-H","--debugeehost", type = str, help = "Debugee browser host address")
+    parser.add_argument("-P", "--debugeeport", type = int, help = "Debugee browser host port")
+    parser.add_argument("-t", "--tag", type = str, help = "Log tag for this audit worker")
+    parser.add_argument("-u", "--username", type = str, help = "The username of the user using the browser")
+    parser.add_argument("-d", "--logdir", type = str, help = "The directory that will store the audited event")
+    args: argparse.Namespace = parser.parse_args()
+    asyncio.run(main(args = args))

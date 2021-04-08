@@ -1,0 +1,48 @@
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '9DFF99BA60B419A5B6FEEE2BD8914BD5', 'sessionId': '325F3CE1049328A6CF73167CA425FD58'}
+[Target Update to]: {'targetId': 'C1977E9D88F56FCF1E2C5B9678975853', 'targetInfo': {'targetId': 'C1977E9D88F56FCF1E2C5B9678975853', 'type': 'page', 'title': 'https://udn.com/news/index', 'url': 'https://udn.com/news/index', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[New Target Created] {'targetId': '9921956444FCFF20E4118C82E48D7720', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '9921956444FCFF20E4118C82E48D7720', 'sessionId': 'FB1E4B8373A93C2F3BE15640527DD2DA'}
+[Target Update to]: {'targetId': '9921956444FCFF20E4118C82E48D7720', 'targetInfo': {'targetId': '9921956444FCFF20E4118C82E48D7720', 'type': 'iframe', 'title': 'https://udesign.udnfunlife.com/mall/cus/cat/OutWebAd.do?dc_btn_0=udnComNewHomeUd', 'url': 'https://udesign.udnfunlife.com/mall/cus/cat/OutWebAd.do?dc_btn_0=udnComNewHomeUd', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[New Target Created] {'targetId': '08EF63DEAF077E59F35F6E0FFD09D572', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[New Target Created] {'targetId': '2368C2847264E98AEC2524F0DDA3C442', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '08EF63DEAF077E59F35F6E0FFD09D572', 'sessionId': 'CDE862B7E846AA41C6DAE7D2AB06B2C1'}
+[Target Attached]: {'targetId': '2368C2847264E98AEC2524F0DDA3C442', 'sessionId': '86CF32705867BCFA4E6AFBF0DC3F4B7F'}
+[Target Update to]: {'targetId': '08EF63DEAF077E59F35F6E0FFD09D572', 'targetInfo': {'targetId': '08EF63DEAF077E59F35F6E0FFD09D572', 'type': 'iframe', 'title': 'https://www.facebook.com/tr/', 'url': 'https://www.facebook.com/tr/', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '08EF63DEAF077E59F35F6E0FFD09D572', 'sessionId': 'CDE862B7E846AA41C6DAE7D2AB06B2C1'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '2368C2847264E98AEC2524F0DDA3C442', 'sessionId': '86CF32705867BCFA4E6AFBF0DC3F4B7F'}
+[New Target Created] {'targetId': '004A9E977A369108871B55DE6A772428', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '004A9E977A369108871B55DE6A772428', 'sessionId': 'E343B81E411F2C80348E32348314B441'}
+[Target Update to]: {'targetId': '004A9E977A369108871B55DE6A772428', 'targetInfo': {'targetId': '004A9E977A369108871B55DE6A772428', 'type': 'iframe', 'title': 'https://gum.criteo.com/syncframe?topUrl=udn.com#{%22optout%22:{%22value%22:false,%22origin%22:0},%22uid%22:{%22origin%22:0},%22sid%22:{%22origin%22:0},%22origin%22:%22publishertag%22,%22version%22:106,%22lwid%22:{%22origin%22:0},%22tld%22:%22udn.com%22,%22bundle%22:{%22value%22:%222JCZu19JeDJ2RmlFOWxobXJuYWRJUTF5WGM1YzYlMkI5ODBqQ3pmTDdCWjF4SXJFRCUyQjliZVJjSE10V0hyNDhlNm5HUE0zbTdqalU0WlZKRlhWclkzVGNhUzQyJTJGWHdKQjJRJTJGQ3dyaFFlcllSb09tRFdkSFlLVjgzcCUyRlAyN0ZIeXZwMTh3WDNkUTlqZTU3azF6ZkFyVGdGcHhrdGFBJTNEJTNE%22,%22origin%22:3},%22topUrl%22:%22udn.com%22,%22cw%22:true,%22ifa%22:{%22origin%22:0},%22lsw%22:true}', 'url': 'https://gum.criteo.com/syncframe?topUrl=udn.com#{%22optout%22:{%22value%22:false,%22origin%22:0},%22uid%22:{%22origin%22:0},%22sid%22:{%22origin%22:0},%22origin%22:%22publishertag%22,%22version%22:106,%22lwid%22:{%22origin%22:0},%22tld%22:%22udn.com%22,%22bundle%22:{%22value%22:%222JCZu19JeDJ2RmlFOWxobXJuYWRJUTF5WGM1YzYlMkI5ODBqQ3pmTDdCWjF4SXJFRCUyQjliZVJjSE10V0hyNDhlNm5HUE0zbTdqalU0WlZKRlhWclkzVGNhUzQyJTJGWHdKQjJRJTJGQ3dyaFFlcllSb09tRFdkSFlLVjgzcCUyRlAyN0ZIeXZwMTh3WDNkUTlqZTU3azF6ZkFyVGdGcHhrdGFBJTNEJTNE%22,%22origin%22:3},%22topUrl%22:%22udn.com%22,%22cw%22:true,%22ifa%22:{%22origin%22:0},%22lsw%22:true}', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[New Target Created] {'targetId': 'D00927446B11559FD89204DFE2B57866', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': 'D00927446B11559FD89204DFE2B57866', 'sessionId': 'AA70AF9F7889A5E3CFD54E5BEED40426'}
+[Target Update to]: {'targetId': 'D00927446B11559FD89204DFE2B57866', 'targetInfo': {'targetId': 'D00927446B11559FD89204DFE2B57866', 'type': 'iframe', 'title': 'https://ca53ab9bf07b94500e86ee2efc186594.safeframe.googlesyndication.com/safeframe/1-0-38/html/container.html', 'url': 'https://ca53ab9bf07b94500e86ee2efc186594.safeframe.googlesyndication.com/safeframe/1-0-38/html/container.html', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[New Target Created] {'targetId': '67996548F736932C1AFA6929A0A3D375', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '67996548F736932C1AFA6929A0A3D375', 'sessionId': '650345F289769E81AAD8FD58F84841A0'}
+[Target Update to]: {'targetId': '67996548F736932C1AFA6929A0A3D375', 'targetInfo': {'targetId': '67996548F736932C1AFA6929A0A3D375', 'type': 'iframe', 'title': 'https://googleads.g.doubleclick.net/pagead/html/r20210401/r20190131/zrt_lookup.html#', 'url': 'https://googleads.g.doubleclick.net/pagead/html/r20210401/r20190131/zrt_lookup.html#', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[New Target Created] {'targetId': '691A0E3EB577E4BD75B26395EAA572E0', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '691A0E3EB577E4BD75B26395EAA572E0', 'sessionId': '4A1145539A60C1A28207145C06761EB3'}
+[New Target Created] {'targetId': '44886DF758D0FAD8FB4F6A7834CECD9C', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '44886DF758D0FAD8FB4F6A7834CECD9C', 'sessionId': '61FE64711706A111A50992355D75A753'}
+[New Target Created] {'targetId': '6802F0CB805593AB0596347C98E9C540', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': '6802F0CB805593AB0596347C98E9C540', 'sessionId': 'E01E5A838CB63D750BC54F455C6C0646'}
+[Target Update to]: {'targetId': '6802F0CB805593AB0596347C98E9C540', 'targetInfo': {'targetId': '6802F0CB805593AB0596347C98E9C540', 'type': 'iframe', 'title': 'https://tpc.googlesyndication.com/sodar/sodar2/222/runner.html', 'url': 'https://tpc.googlesyndication.com/sodar/sodar2/222/runner.html', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '44886DF758D0FAD8FB4F6A7834CECD9C', 'sessionId': '61FE64711706A111A50992355D75A753'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '6802F0CB805593AB0596347C98E9C540', 'sessionId': 'E01E5A838CB63D750BC54F455C6C0646'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '691A0E3EB577E4BD75B26395EAA572E0', 'sessionId': '4A1145539A60C1A28207145C06761EB3'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '004A9E977A369108871B55DE6A772428', 'sessionId': 'E343B81E411F2C80348E32348314B441'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '67996548F736932C1AFA6929A0A3D375', 'sessionId': '650345F289769E81AAD8FD58F84841A0'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': '9921956444FCFF20E4118C82E48D7720', 'sessionId': 'FB1E4B8373A93C2F3BE15640527DD2DA'}
+[Dispatch Error] Handler for the event Target.detachedFromTarget are not implement yet
+[Target Destroyed]: {'targetId': 'D00927446B11559FD89204DFE2B57866', 'sessionId': 'AA70AF9F7889A5E3CFD54E5BEED40426'}
+[New Target Created] {'targetId': 'F611AEA97A4FD6D24494DE5ED0DC8FDD', 'type': 'iframe', 'title': '', 'url': '', 'attached': False, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}
+[Target Attached]: {'targetId': 'F611AEA97A4FD6D24494DE5ED0DC8FDD', 'sessionId': '7B2309BDF94B0ED1B42193A84153FD44'}
+[Target Update to]: {'targetId': 'F611AEA97A4FD6D24494DE5ED0DC8FDD', 'targetInfo': {'targetId': 'F611AEA97A4FD6D24494DE5ED0DC8FDD', 'type': 'iframe', 'title': 'https://placeholder.xyz.net/download.html', 'url': 'https://placeholder.xyz.net/download.html', 'attached': True, 'canAccessOpener': False, 'browserContextId': 'AACE16BAA0899DB585BB4143B3CCA37B'}}
