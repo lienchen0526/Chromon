@@ -1,11 +1,11 @@
-from typing import Dict, Generic, Literal, Tuple, Union
+from typing import Dict, Generic, Literal, Optional, Tuple, Union
 import chromeevents as Events
 import chrometypes as Types
 import json
 import asyncio
 import copy
 from urllib.parse import urlparse
-from core import ChromeBridge
+from core import ChromeBridge, Logger
 
 class Handler(object):
     """
@@ -17,22 +17,27 @@ class Handler(object):
     trgt_session_lock = asyncio.Lock()
 
     _subhandlers: Dict[str, type] = {}
+    _activedevent: Dict[str, int] = {}
     _pending_command: Dict[int, Tuple[type, Types.Generic.DebugCommand]] = {}
     _target_session: Dict[Types.Target.TargetID, Union[Types.Target.SessionID, Literal["Pending"]]] = {}
     interface: ChromeBridge
+    logger: Logger
 
     def __init_subclass__(cls, interested_event: str) -> None:
+        cls.interested_event = interested_event
         if cls._INSTANCE:
             return super().__init_subclass__()
         cls._INSTANCE = cls()
         if _handler := (Handler._subhandlers.get(interested_event)):
             raise AttributeError(f"Attempting to register multiple handler on single type of event. Current Exsit Handler: {_handler.__class__}. Attempted adding Handler: {cls.__class__}")
         Handler._subhandlers[interested_event] = cls._INSTANCE
+        Handler._activedevent[interested_event] = max(Handler._activedevent.values(), default = 0) + 1
         return super().__init_subclass__()
     
-    def __init__(self, interface: ChromeBridge) -> None:
+    def __init__(self, interface: ChromeBridge, logger: Logger) -> None:
         super().__init__()
         self.__class__.interface = interface
+        self.__class__.logger = logger
 
     @classmethod
     async def dispatch(cls, msg: Union[Types.Generic.DebugReply, dict]) -> None:
@@ -43,7 +48,7 @@ class Handler(object):
 
         if event := (msg.get('method')):
             if not cls._subhandlers.get(event, None):
-                print(f"[Dispatch Error] Handler for the event {event} are not implement yet")
+                print(f"[+ Dispatch Error] Handler for the event {event} are not implement yet")
                 # raise NotImplementedError(f"[Dispatch Error] Handler for the event {event} are not implement yet")
                 pass
             else:
@@ -76,7 +81,29 @@ class Handler(object):
             self.interface.sendObj(command)
 
         return message_id
+    
+    def logEvent(self, msg:str, origin: Optional[str] = None) -> None:
+        event_id = Handler._activedevent.get(self.interested_event, None)
+        assert event_id is not None
 
+        if event_id < 0:
+            return None
+
+        if origin:
+            if not isinstance(origin, str):
+                raise TypeError(f"origin is not str, is {type(origin)}")
+        if not isinstance(msg, str):
+            raise TypeError(f"msg is not str, is {type(msg)}")
+        
+        origin = self.__class__.__name__ if not origin else origin
+        origin = " - ".join([str(event_id), origin])
+
+        self.logger.log(
+            origin = self.__class__.__name__ if not origin else origin,
+            event = msg
+        )
+        return None
+    
     async def handle(self):
         """Event handle function. Due to it method may access parent class resource with synchronization issue.
         It should be designed as an asynchronous function. Once the meta class <Handler> resource are not as expected, it will
@@ -110,8 +137,10 @@ class TargetAttachedHandler(Handler, interested_event = "Target.attachedToTarget
             "targetId": target_id,
             "sessionId": session_id
         }
-
-        print(f"[Target Attached]: {well_msg}")
+        self.logEvent(
+            msg = json.dumps(well_msg),
+            origin = "[Target Attached]"
+        )
         await self.initTarget(targetId = target_id)
         return None
     
@@ -138,6 +167,11 @@ class TargetAttachedHandler(Handler, interested_event = "Target.attachedToTarget
         )
 
     async def _setDiscoverTargets(self, sessionId: Types.Target.SessionID) -> None:
+        """Set new attached target can discover new sub-target.
+
+        Args:
+            sessionId (Types.Target.SessionID): The sessionid of the given parent target
+        """
         _cmd: Types.Generic.DebugCommand = {
             "method": "Target.setDiscoverTargets",
             "sessionId": sessionId,
@@ -183,7 +217,10 @@ class TargetCreatedHandler(Handler, interested_event = "Target.targetCreated"):
                 async with self.trgt_session_lock:
                     _pending = self._target_session.get(t.get("targetId"), None)
                 if not _pending:
-                    print(f"[New Target Created] {t}")
+                    self.logEvent(
+                        msg = json.dumps(t),
+                        origin = "[New Target Created]"
+                    )
                     await self._attachToTarget(t)
                 else:
                     # There are same Target Creation in previous
@@ -237,7 +274,10 @@ class targetInfoChangeHandler(Handler, interested_event = "Target.targetInfoChan
             "targetId": t.get('targetId'),
             "targetInfo": t
         }
-        print(f"[Target Update to]: {well_msg}")
+        self.logEvent(
+            msg = json.dumps(well_msg),
+            origin = "[Target Update to]"
+        )
         return None
     
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):
@@ -261,8 +301,10 @@ class targetDestroyHandler(Handler, interested_event = "Target.targetDestroyed")
                 "targetId": tid,
                 "sessionId": sessid
             }
-            print(f"[Target Destroyed]: {well_msg}")
-            pass
+            self.logEvent(
+                msg = json.dumps(well_msg),
+                origin = "[Target Destroyed]"
+            )
         return None
 
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):

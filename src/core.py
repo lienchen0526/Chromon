@@ -1,10 +1,13 @@
+import os, sys
+from datetime import datetime
+from asyncio.exceptions import InvalidStateError
 import requests
 import websocket
 import time, json
 import asyncio
 import copy
-from typing import Union, List, Dict, Any
-from queue import Queue
+from typing import Type, Union, List, Dict, Any, Optional
+
 import chrometypes as Types
 
 class ChromeBridge(object):
@@ -49,7 +52,7 @@ class ChromeBridge(object):
                     break
             except requests.exceptions.ConnectionError:
                 time.sleep(1)
-        print(f"[In {self.__class__}] run connectBrowser")
+        print(f"[In {self.__class__.__name__}] run connectBrowser")
         self.connectBrowser()
 
     def connectBrowser(self) -> None:
@@ -109,21 +112,96 @@ class ChromeBridge(object):
         try:
             _msg = self.ws.recv()
             _rply_obj: Dict["str", Any] = json.loads(_msg)
-            '''
-            if _rply_obj.get("method") == "Target.targetDestroyed":
-                print(f"{json.dumps(_rply_obj)}")
-            if _rply_obj.get("method") == "Target.attachedToTarget":
-                peek_rply = copy.deepcopy(_rply_obj)
-                peek_rply["params"]["targetId"] = peek_rply["params"]["targetInfo"]["targetId"]
-                peek_rply["params"].pop("targetInfo")
-                print(f"{json.dumps(peek_rply)}")
-            if _rply_obj.get("method") == "Target.targetCreated":
-                peek_rply = copy.deepcopy(_rply_obj)
-                peek_rply["params"]["targetId"] = peek_rply["params"]["targetInfo"]["targetId"]
-                peek_rply["params"].pop("targetInfo")
-                print(f"{json.dumps(peek_rply)}")
-                pass
-            '''
         except BlockingIOError:
             _rply_obj = {}
         return _rply_obj
+
+class Logger(object):
+    
+    def __init__(self, dir_: Optional[str] = None, username: Optional[str] = None, tag: Optional[str] = None, stdout: Optional[bool] = False) -> None:
+        """Using `dir_` to specify the directory that the logging destination. 
+        If `dir_` is not given, current working directory will be set.
+        `stdout` will be used if `stdout` argument set to `True`.
+
+        Args:
+            dir_ (Optional[str]): path of the directory for log file.
+            username (Optional[str]): `username` will be set to `default` if not set
+            tag (Optional[str]): `tag` wil be set to `default` if not set.
+            stdout (Optional[bool]): specify if display logged event to stdout.
+        """
+        super().__init__()
+        self.stdout = stdout
+        self.fs = None
+        if dir_:
+            if not isinstance(dir_, str):
+                raise TypeError(f"dir_ should be type str, not {dir_}")
+            self.logdir = dir_
+        else:
+            self.logdir = os.getcwd()
+        
+        if username:
+            if not isinstance(username, str):
+                raise TypeError("argument username should be a str")
+            self.username = username
+        else:
+            self.username = "default"
+        if tag:
+            if not isinstance(tag, str):
+                raise TypeError("argument tag should be a str")
+            self.tag = tag
+        else:
+            self.tag = "default"
+        
+        if not os.path.exists(self.logdir):
+            raise FileNotFoundError(f"directory not found: {self.logdir}")
+
+        if not os.path.isdir(self.logdir):
+            raise NotADirectoryError(f"{self.logdir} is not a directory")
+        
+        self.setLogFile(username = username, tag = tag)
+        return None
+        
+    
+    def log(self, origin: str, event: str) -> None:
+        now = datetime.now().isoformat()
+        msg = " - ".join([now, origin, event])
+        print(msg, file = self.fs)
+        if self.stdout:
+            print(msg)
+        return None
+
+    def setLogFile(self, username: Optional[str] = None, tag: Optional[str] = None) -> None:
+        """New log file
+
+        Args:
+            username (Optional[str]): [description]
+            tag (Optional[str]): [description]
+        """
+        if not username:
+            username = "default"
+        if not tag:
+            tag = "default"
+        
+        if not isinstance(username, str):
+            raise TypeError(f"username should be str, not {type(username)}")
+
+        if not isinstance(tag, str):
+            raise TypeError(f"tag should be str, not {type(tag)}")
+        
+        self.username = username
+        self.tag = tag
+
+        new_file = "".join([username, "-", tag, ".log"])
+        full_path = os.path.join(self.logdir, new_file)
+
+        if os.path.exists(full_path):
+            print(f"[+ File already existed], appending...")
+            if self.fs:
+                self.fs.close()
+            self.fs = open(full_path, "a")
+            print(os.linesep + "=" * 50 + os.linesep, file = self.fs)
+        else:
+            print("[+ Log file not existed, Creating...]")
+            if self.fs:
+                self.fs.close()
+            self.fs = open(full_path, "x")

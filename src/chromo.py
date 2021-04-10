@@ -1,13 +1,20 @@
 import asyncio
 import argparse
+import sys
 
-from core import ChromeBridge
+from core import ChromeBridge, Logger
 import  chrometypes as Types
 from handlers import Handler
 
 class ChroMo(object):
-    
+
     def __init__(self, args: argparse.Namespace):
+        """This Module provide the interactive mechanism for user to
+        manage element such as `Handler` and `ChromeBridge` and `Logger`.
+
+        Args:
+            args (argparse.Namespace): [description]
+        """
         if not args.debugeehost:
             args.debugeehost = "localhost"
         if not args.debugeeport:
@@ -17,7 +24,15 @@ class ChroMo(object):
             host = args.debugeehost,
             port = args.debugeeport
         )
-        self.handler_host = Handler(interface = self.chrome)
+        self.logger = Logger(
+            dir_ = args.logdir,
+            username = args.username,
+            tag = args.tag
+        )
+        self.handler_host = Handler(
+            interface = self.chrome,
+            logger = self.logger
+        )
 
     def attachToBrowser(self) -> None:
         _cmd: Types.Generic.DebugCommand = {
@@ -28,9 +43,11 @@ class ChroMo(object):
         pass
     
     async def entrypoint(self) -> None:
-        print(f"[In {self}] run attachToBrowser")
+        print(f"[In {self.__class__.__name__}] run attachToBrowser")
         self.attachToBrowser()
-        print(f"[In {self}] attached success")
+        print(f"[+ In {self.__class__.__name__}] attached success")
+        asyncio.create_task(self.startCli())
+
         while True:
             msg = self.chrome.getReply()
             if msg:
@@ -38,6 +55,19 @@ class ChroMo(object):
             else:
                 await asyncio.sleep(0)
                 pass
+        return None
+
+    @staticmethod
+    async def ainput(string: str) -> str:
+        return await asyncio.get_event_loop().run_in_executor(
+                None, lambda s=string: input(s+' '))
+        return await asyncio.get_event_loop().run_in_executor(
+                None, sys.stdin.readline)
+
+    async def startCli(self) -> None:
+        while True:
+            raw_cmd = await self.ainput("cli>")
+            print(raw_cmd)
         return None
 
 async def main(args: argparse.Namespace):
