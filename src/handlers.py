@@ -104,6 +104,91 @@ class Handler(object):
         )
         return None
     
+    @classmethod
+    def disableEvent(cls, eventid: Union[str, int]) -> int:
+        """Disable the event by the event id
+
+        Args:
+            eventid (int): The event id that tend to be diabled
+
+        Returns:
+            int: 0 if success else -1
+        """
+        if isinstance(eventid, int):
+            if eventid < 0:
+                print(f"[+ Event has been disabled]")
+                return -1
+            event_name = next(
+                filter(
+                    lambda x: x[1] == eventid, cls._activedevent.items()
+                ),
+                (None, None)
+            )[0]
+            if event_name:
+                cls._activedevent[event_name] = -cls._activedevent[event_name]
+            else:
+                print(f"[+ Event not exist]")
+                pass
+            return 0
+        elif isinstance(eventid, str):
+            if eventid.isdigit():
+                return cls.disableEvent(int(eventid))
+            
+            event_name = eventid
+            eventid = cls._activedevent.get(event_name)
+
+            if eventid is None:
+                print(f"[+ Event not existed] {event_name}")
+                return -1
+            else:
+                if cls._activedevent.get(event_name) < 0:
+                    print(f"[+ Event has been disabled]: {event_name}")
+                else:
+                    cls._activedevent[event_name] = -eventid
+                return 0
+        else:
+            print(f"[+ Invalid Type of eventid]: {type(eventid)}")
+            return -1
+    @classmethod
+    def enableEvent(cls, eventid: Union[int,str]) -> int:
+        if isinstance(eventid, int):
+            if eventid < 0:
+                print(f"[+ Invalid eventId] Event id {eventid} is negative.")
+                return -1
+
+            eventname = next(
+                filter(
+                    lambda x: x[1] == eventid, cls._activedevent.items()
+                ),
+                (None, None)
+            )[0]
+            if not eventname:
+                print(f"[Invalid eventId] No such event")
+                return -1
+            
+            if cls._activedevent[eventname] < 0:
+                cls._activedevent[eventname] = -cls._activedevent[eventname]
+            else:
+                return 0
+            return 0
+        if isinstance(eventid, str):
+            if eventid.isdigit():
+                return cls.enableEvent(int(eventid))
+            
+            event_name = eventid
+            eventid = cls._activedevent.get(event_name)
+
+            if not eventid:
+                print(f"[+ Invalid eventName] No such event name: {event_name}")
+                return -1
+            if eventid < 0:
+                cls._activedevent[event_name] = -eventid
+                return 0
+            else:
+                return 0
+        print(f"[+ Invalid eventId] The type of eventId should be int or str")
+        return -1
+
     async def handle(self):
         """Event handle function. Due to it method may access parent class resource with synchronization issue.
         It should be designed as an asynchronous function. Once the meta class <Handler> resource are not as expected, it will

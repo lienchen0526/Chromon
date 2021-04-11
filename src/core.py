@@ -132,6 +132,7 @@ class Logger(object):
         super().__init__()
         self.stdout = stdout
         self.fs = None
+        self.onlogging = True
         if dir_:
             if not isinstance(dir_, str):
                 raise TypeError(f"dir_ should be type str, not {dir_}")
@@ -165,7 +166,8 @@ class Logger(object):
     def log(self, origin: str, event: str) -> None:
         now = datetime.now().isoformat()
         msg = " - ".join([now, origin, event])
-        print(msg, file = self.fs)
+        if self.onlogging:
+            print(msg, file = self.fs)
         if self.stdout:
             print(msg)
         return None
@@ -191,8 +193,8 @@ class Logger(object):
         self.username = username
         self.tag = tag
 
-        new_file = "".join([username, "-", tag, ".log"])
-        full_path = os.path.join(self.logdir, new_file)
+        self.new_file = "".join([username, "-", tag, ".log"])
+        full_path = os.path.join(self.logdir, self.new_file)
 
         if os.path.exists(full_path):
             print(f"[+ File already existed], appending...")
@@ -205,3 +207,46 @@ class Logger(object):
             if self.fs:
                 self.fs.close()
             self.fs = open(full_path, "x")
+    
+    @property
+    def disableLogging(self) -> bool:
+        self.onlogging = False
+        self.fs.flush()
+        return self.onlogging
+
+    @property
+    def enableLogging(self) -> bool:
+        self.onlogging = True
+        return self.onlogging
+
+    def __exit__(self):
+        if self.fs:
+            self.fs.close()
+
+class CliCmd(object):
+    _Cmd: dict = {
+            "log": {
+                "config": {
+                    "show": None,
+                    "set": None
+                },
+                "pause": None,
+                "start": None
+            },
+            "event": {
+                "show": {
+                    "active": None,
+                    "all": None
+                },
+                "disable": None,
+                "enable": None
+            },
+            "chrome": {
+                "config": None
+            },
+            "exit": None
+        }
+    
+    @classmethod
+    def getScheme(cls):
+        return copy.deepcopy(cls._Cmd)
