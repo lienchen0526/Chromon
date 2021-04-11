@@ -48,7 +48,7 @@ class Handler(object):
 
         if event := (msg.get('method')):
             if not cls._subhandlers.get(event, None):
-                print(f"[+ Dispatch Error] Handler for the event {event} are not implement yet")
+                # print(f"[+ Dispatch Error] Handler for the event {event} are not implement yet")
                 # raise NotImplementedError(f"[Dispatch Error] Handler for the event {event} are not implement yet")
                 pass
             else:
@@ -63,7 +63,9 @@ class Handler(object):
             await command_origin_pair[0].catchReply(command_origin_pair[1], msg)
             return None
         
-        raise TypeError(f"[Dispatch Error] Handler does not recognize the message {msg}")
+        print(f"[+ Dispatch Error] Handler does not recognize the message {msg}")
+        return None
+        #raise TypeError(f"[Dispatch Error] Handler does not recognize the message {msg}")
 
     async def sendCommand(self, command: Types.Generic.DebugCommand) -> int:
         """This method is an command interface for subhander to send command to debugee browser.
@@ -158,12 +160,12 @@ class Handler(object):
 
             eventname = next(
                 filter(
-                    lambda x: x[1] == eventid, cls._activedevent.items()
+                    lambda x: -x[1] == eventid, cls._activedevent.items()
                 ),
                 (None, None)
             )[0]
             if not eventname:
-                print(f"[Invalid eventId] No such event")
+                print(f"[+ Invalid eventId] No such event")
                 return -1
             
             if cls._activedevent[eventname] < 0:
@@ -250,6 +252,19 @@ class TargetAttachedHandler(Handler, interested_event = "Target.attachedToTarget
         await self._setDiscoverTargets(
             sessionId = sessionid
         )
+        await self._enablePage(
+            sessionId = sessionid
+        )
+        await self._enableNetwork(
+            sessionId = sessionid
+        )
+        await self._enableDebugger(
+            sessionId = sessionid
+        )
+        await self._enableLifecycleEvents(
+            sessionId = sessionid,
+            enable = True
+        )
 
     async def _setDiscoverTargets(self, sessionId: Types.Target.SessionID) -> None:
         """Set new attached target can discover new sub-target.
@@ -282,6 +297,39 @@ class TargetAttachedHandler(Handler, interested_event = "Target.attachedToTarget
         }
         await self.sendCommand(command = _cmd)
         return None
+    
+    async def _enablePage(self, sessionId: Types.Target.SessionID) -> None:
+        _cmd: Types.Generic.DebugCommand = {
+            "method": "Page.enable",
+            "sessionId": sessionId
+        }
+        await self.sendCommand(command = _cmd)
+        return None
+    
+    async def _enableNetwork(self, sessionId: Types.Target.SessionID) -> None:
+        _cmd: Types.Generic.DebugCommand = {
+            "method": "Debugger.enable",
+            "sessionId": sessionId
+        }
+        await self.sendCommand(command = _cmd)
+        return None
+    
+    async def _enableDebugger(self, sessionId: Types.Target.SessionID) -> None:
+        _cmd: Types.Generic.DebugCommand = {
+            "method": "Debugger.enable",
+            "sessionId": sessionId
+        }
+        await self.sendCommand(command = _cmd)
+        return None
+
+    async def _enableLifecycleEvents(self, sessionId: Types.Target.SessionID, enable: bool = True) -> None:
+        _cmd: Types.Generic.DebugCommand = {
+            "method": "Page.setLifecycleEventsEnabled",
+            "sessionId": sessionId
+        }
+        await self.sendCommand(command = _cmd)
+        return None
+        
 
 class TargetCreatedHandler(Handler, interested_event = "Target.targetCreated"):
     _INSTANCE = None
@@ -394,3 +442,4 @@ class targetDestroyHandler(Handler, interested_event = "Target.targetDestroyed")
 
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):
         return None
+    

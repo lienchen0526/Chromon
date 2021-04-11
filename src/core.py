@@ -64,7 +64,7 @@ class ChromeBridge(object):
         )
         debugeeinfo: Types.Generic.GlobalDebugableInfo = json.loads(_rsp.text)
 
-        self.ws = websocket.create_connection(
+        self.ws: websocket.WebSocket = websocket.create_connection(
             url = debugeeinfo.get("webSocketDebuggerUrl")
         )
         self.ws.settimeout(self.wstimeout)
@@ -115,6 +115,10 @@ class ChromeBridge(object):
         except BlockingIOError:
             _rply_obj = {}
         return _rply_obj
+    
+    def shutDown(self) -> bool:
+        self.ws.close()
+        return True
 
 class Logger(object):
     
@@ -219,6 +223,11 @@ class Logger(object):
         self.onlogging = True
         return self.onlogging
 
+    def shutDown(self) -> bool:
+        if self.fs and not self.fs.closed:
+            self.fs.close()
+        return True
+
     def __exit__(self):
         if self.fs:
             self.fs.close()
@@ -244,7 +253,8 @@ class CliCmd(object):
             "chrome": {
                 "config": None
             },
-            "exit": None
+            "exit": None,
+            "help": None
         }
     
     @classmethod

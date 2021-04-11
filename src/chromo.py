@@ -44,9 +44,9 @@ class ChroMo(object):
         self.chrome.sendObj(_cmd)
         pass
     
-    def registerCliFunction(self):
+    def registerCliFunction(self) -> None:
         self.clicmd['log']['config']['show'] = lambda slf=self:\
-            print(f"logging directory:  {slf.logger.logdir}{os.linesep}log file name:      {slf.logger.new_file}{os.linesep}file stream opened: {slf.logger.fs.closed}")
+            print(f" +logging directory:  {slf.logger.logdir}{os.linesep} +log file name:      {slf.logger.new_file}{os.linesep} +file stream opened: {not slf.logger.fs.closed}")
         self.clicmd['log']['config']['set'] = lambda lines, slf=self: slf.logger.setLogFile(**dict([x.split("=") for x in lines]))
         self.clicmd['log']['pause'] = lambda slf=self: slf.logger.disableLogging and print(f"{slf.logger.onlogging}")
         self.clicmd['log']['start'] = lambda slf=self: slf.logger.enableLogging and print(f"{slf.logger.onlogging}")
@@ -56,8 +56,9 @@ class ChroMo(object):
             if not "all" in events else [slf.handler_host.disableEvent(x) for x in slf.handler_host._activedevent.keys()]
         self.clicmd['event']['enable'] = lambda events,slf=self: [slf.handler_host.enableEvent(x) for x in events]\
             if not "all" in events else [slf.handler_host.enableEvent(x) for x in slf.handler_host._activedevent.keys()]
-        self.clicmd['exit'] = exit
-        pass
+        self.clicmd['exit'] = lambda slf=self: slf.logger.shutDown() and slf.chrome.shutDown() and asyncio.get_event_loop().stop() and exit(0)
+        self.clicmd['help'] = lambda : print(f" +log config show/update [username=lien tag=chen]/cd <directory>{os.linesep} +log pause/start{os.linesep}{os.linesep} +event show active/all{os.linesep} +event enable/disable all/<sequenc of nums>{os.linesep} +exit")
+        return None
 
     async def entrypoint(self) -> None:
         print(f"[In {self.__class__.__name__}] run attachToBrowser")
