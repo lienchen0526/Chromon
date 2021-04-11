@@ -57,7 +57,7 @@ class ChroMo(object):
         self.clicmd['event']['enable'] = lambda events,slf=self: [slf.handler_host.enableEvent(x) for x in events]\
             if not "all" in events else [slf.handler_host.enableEvent(x) for x in slf.handler_host._activedevent.keys()]
         self.clicmd['exit'] = lambda slf=self: slf.logger.shutDown() and slf.chrome.shutDown() and asyncio.get_event_loop().stop() and exit(0)
-        self.clicmd['help'] = lambda : print(f" +log config show/update [username=lien tag=chen]/cd <directory>{os.linesep} +log pause/start{os.linesep}{os.linesep} +event show active/all{os.linesep} +event enable/disable all/<sequenc of nums>{os.linesep} +exit")
+        self.clicmd['help'] = lambda : print(f" +log config show/set [username=lien tag=chen]/cd <directory>{os.linesep} +log pause/start{os.linesep}{os.linesep} +event show active/all{os.linesep} +event enable/disable all/<sequenc of nums>{os.linesep} +exit")
         return None
 
     async def entrypoint(self) -> None:

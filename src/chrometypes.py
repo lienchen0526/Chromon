@@ -52,7 +52,7 @@ class Page(object):
     )
 
 class Target(object):
-    TargetID = str
+    TargetID = str # TargetID can be Page.FrameID.
     SessionID = str
     ValidTypes = ('page', 'iframe', 'browser', 'script')
 
@@ -70,6 +70,37 @@ class Target(object):
             "browserContextId": Optional[Browser.BrowserContextID]
         }
     )
+
+class Runtime(object):
+    UniqueDebuggerId = str
+    ScriptId = str
+    StackTraceId = TypedDict(
+        "StackTraceId",
+        {
+            "id": str,
+            "debuggerId": Optional[UniqueDebuggerId]
+        }
+    )
+    CallFrame = TypedDict(
+        "CallFrame",
+        {
+            "functionName": str,
+            "scriptId": ScriptId,
+            "url": str,
+            "lineNumber": int,
+            "columnNumber": int
+        }
+    )
+    StackTrace = TypedDict(
+        "StackTrace",
+        {
+            "description": Optional[str],
+            "callFrames": List[CallFrame],
+            "parent": Optional[dict],
+            "parentId": StackTraceId
+        }
+    )
+    pass
 
 class Generic(object):
 

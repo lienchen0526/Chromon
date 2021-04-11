@@ -443,3 +443,24 @@ class targetDestroyHandler(Handler, interested_event = "Target.targetDestroyed")
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):
         return None
     
+class frameAttachedHandler(Handler, interested_event = "Page.frameAttached"):
+
+    _INSTANCE = None
+    def __init__(self) -> None:
+        return None
+    
+    async def handle(self, msg: Events.Page.frameAttached) -> None:
+        event_ = msg.get('params')
+        stack_ = event_.get('stack')
+        if stack_:
+            event_['stack']['callFrames'] = stack_.get('callFrames')[0]
+            event_['stack']['callFrames']['url'] = urlparse(url = event_.get('stack').get('callFrames').get('url'))._asdict()
+            event_['stack']['callFrames'].pop('lineNumber')
+            event_['stack']['callFrames'].pop('columnNumber')
+        else:
+            pass
+        self.logEvent(
+            msg = json.dumps(event_),
+            origin = "[Frame Attached to Frame]"
+        )
+        return None

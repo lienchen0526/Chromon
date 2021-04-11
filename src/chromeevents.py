@@ -1,7 +1,7 @@
 import chrometypes as Types
 from typing import TypedDict, Optional, Literal
 
-class Target:
+class Target(object):
     targetCreated = TypedDict(
         "targetCreated",
         {
@@ -54,4 +54,19 @@ class Target:
             )
         }
     )
-    pass
+
+class Page(object):
+    frameAttached = TypedDict(
+        "frameAttached",
+        {
+            "method": Literal["Page.frameAttached"],
+            "params": TypedDict(
+                "frameinfo",
+                {
+                    "frameId": Types.Page.FrameId,
+                    "parentFrameId": Types.Page.FrameId,
+                    "stack": Types.Runtime.StackTrace
+                }
+            )
+        }
+    )
