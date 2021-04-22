@@ -52,7 +52,7 @@ class ChromeBridge(object):
                     break
             except requests.exceptions.ConnectionError:
                 time.sleep(1)
-        print(f"[In {self.__class__.__name__}] run connectBrowser")
+        print(f"[+ In {self.__class__.__name__}] run connectBrowser")
         self.connectBrowser()
 
     def connectBrowser(self) -> None:
@@ -96,7 +96,7 @@ class ChromeBridge(object):
             raise requests.exceptions.ConnectionError(f"Endpoint connection fail at debuggee host: {self.debuggee_dest}")
     
     def sendObj(self, obj: Types.Generic.DebugCommand) -> int:
-        """This function is a blocking call to send the obj as command to Debugee
+        """This function is a non-blocking call to send the obj as command to Debugee
         Args:
             obj (dict): the DebugCommand object that can be dump to json
 
@@ -167,17 +167,18 @@ class Logger(object):
         return None
         
     
-    def log(self, origin: str, event: str) -> None:
+    def log(self, origin: str, event: str, debug: Optional[bool] = False) -> None:
         now = datetime.now().isoformat()
         msg = " - ".join([now, origin, event])
         if self.onlogging:
             print(msg, file = self.fs)
-        if self.stdout:
+        if debug:
             print(msg)
         return None
 
     def setLogFile(self, username: Optional[str] = None, tag: Optional[str] = None) -> None:
-        """New log file
+        """New log file. It will close current file stream if file stream still
+        opened. and open a new file stream.
 
         Args:
             username (Optional[str]): [description]
@@ -201,17 +202,36 @@ class Logger(object):
         full_path = os.path.join(self.logdir, self.new_file)
 
         if os.path.exists(full_path):
-            print(f"[+ File already existed], appending...")
-            if self.fs:
+            print(f"[+ File already existed]: Appending...")
+            if self.fs and not self.fs.closed:
+                print(f"[+ Closing old file stream...]")
+                self.fs.flush()
                 self.fs.close()
             self.fs = open(full_path, "a")
             print(os.linesep + "=" * 50 + os.linesep, file = self.fs)
         else:
-            print("[+ Log file not existed, Creating...]")
-            if self.fs:
+            print("[+ Log file not existed]: Creating...")
+            if self.fs and not self.fs.closed:
+                print(f"[+ Closing old file stream...]")
+                self.fs.flush()
                 self.fs.close()
             self.fs = open(full_path, "x")
     
+    def setDirectory(self, dir_: str) -> int:
+        if not isinstance(dir_, str):
+            raise TypeError(f"dir_ is not a str, is {type(dir_)}")
+        if not os.path.exists(dir_):
+            print("[+ Specified directory path not exist]")
+            return -1
+        if not os.path.isdir(dir_):
+            print("[+ Specified path is not a directory]")
+            return -1
+        if not self.username or not self.tag:
+            raise AttributeError(f"Unknown Error due to not found attribute {'username' if not self.username else ''}, {'tag' if not self.tag else ''}")
+        self.logdir = dir_
+
+        return 0 if not self.setLogFile(username = self.username, tag = self.tag) else -1
+
     @property
     def disableLogging(self) -> bool:
         self.onlogging = False
@@ -237,7 +257,8 @@ class CliCmd(object):
             "log": {
                 "config": {
                     "show": None,
-                    "set": None
+                    "set": None,
+                    "cd": None
                 },
                 "pause": None,
                 "start": None

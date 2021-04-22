@@ -2,6 +2,7 @@ import asyncio
 import argparse
 from asyncio.exceptions import CancelledError
 import sys, os
+import pyfiglet
 
 from core import ChromeBridge, Logger, CliCmd
 import  chrometypes as Types
@@ -46,8 +47,9 @@ class ChroMo(object):
     
     def registerCliFunction(self) -> None:
         self.clicmd['log']['config']['show'] = lambda slf=self:\
-            print(f" +logging directory:  {slf.logger.logdir}{os.linesep} +log file name:      {slf.logger.new_file}{os.linesep} +file stream opened: {not slf.logger.fs.closed}")
+            print(f" +logging directory:  {slf.logger.logdir}{os.linesep} +log file name:      {slf.logger.new_file}{os.linesep} +file stream opened: {not slf.logger.fs.closed}{os.linesep} +logging paused:    {not slf.logger.onlogging}")
         self.clicmd['log']['config']['set'] = lambda lines, slf=self: slf.logger.setLogFile(**dict([x.split("=") for x in lines]))
+        self.clicmd['log']['config']['cd'] = lambda lines, slf=self: slf.logger.setDirectory(lines[0]) if lines else print(f"[+ Please specify directory]")
         self.clicmd['log']['pause'] = lambda slf=self: slf.logger.disableLogging and print(f"{slf.logger.onlogging}")
         self.clicmd['log']['start'] = lambda slf=self: slf.logger.enableLogging and print(f"{slf.logger.onlogging}")
         self.clicmd['event']['show']['active'] = lambda slf=self: [print(" ".join((str(x[1]), x[0]))) for x in slf.handler_host._activedevent.items() if x[1] > 0]
@@ -61,9 +63,9 @@ class ChroMo(object):
         return None
 
     async def entrypoint(self) -> None:
-        print(f"[In {self.__class__.__name__}] run attachToBrowser")
+        print(f"[+ In {self.__class__.__name__}] run attachToBrowser...")
         self.attachToBrowser()
-        print(f"[+ In {self.__class__.__name__}] attached success")
+        print(f"[+ In {self.__class__.__name__}] browser attaching success")
 
         asyncio.create_task(self.startCli())
 
@@ -87,15 +89,15 @@ class ChroMo(object):
             raw_cmd = await self.ainput("cli>")
             cmd_cells = raw_cmd.split(" ")
             cmd_scope = self.clicmd
-            for cell in enumerate(cmd_cells):
+            for id_, cell in enumerate(cmd_cells):
                 if callable(cmd_scope):
-                    cmd_scope(cmd_cells[cell[0]:])
+                    cmd_scope(cmd_cells[id_:])
                     cmd_scope = None
                     break
                 if cmd_scope is None:
                     print(f"[+ Invalid Command]")
                     break
-                cmd_scope = cmd_scope.get(cell[1])
+                cmd_scope = cmd_scope.get(cell)
                 pass
             if cmd_scope:
                 if not callable(cmd_scope):
@@ -105,7 +107,8 @@ class ChroMo(object):
         return None
 
 async def main(args: argparse.Namespace):
-    
+    f = pyfiglet.Figlet()
+    print(f.renderText("DSNS-Chromo"))
     chromo = ChroMo(args = args)
     await asyncio.gather(chromo.entrypoint())
 

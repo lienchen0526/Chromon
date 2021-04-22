@@ -50,10 +50,11 @@ class Page(object):
             "childFrames": Optional[list]
         }
     )
+    NavigationType = Literal["Navigation", "BackForwardCacheRestore"]
 
 class Target(object):
     TargetID = str # TargetID can be Page.FrameID.
-    SessionID = str
+    SessionID = str # The unique session identifier every debugged target connected by python
     ValidTypes = ('page', 'iframe', 'browser', 'script')
 
     TargetInfo = TypedDict(
@@ -74,6 +75,8 @@ class Target(object):
 class Runtime(object):
     UniqueDebuggerId = str
     ScriptId = str
+    ExecutionContextId = str
+
     StackTraceId = TypedDict(
         "StackTraceId",
         {
@@ -151,3 +154,15 @@ class Generic(object):
         }
     )
 
+class DOM(object):
+    BackendNodeId = int
+
+class Debugger(object):
+    ScriptLanguage = Literal["JavaScript", "WebAssembly"]
+    DebugSymbols = TypedDict(
+        "DebugSymbols",
+        {
+            "type": Literal["None", "SourceMap", "EmbededDWARF", "ExternalDWARF"],
+            "externalURL": Optional[str]
+        }
+    )

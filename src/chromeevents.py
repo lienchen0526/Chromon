@@ -1,5 +1,5 @@
 import chrometypes as Types
-from typing import TypedDict, Optional, Literal
+from typing import TypedDict, Optional, Literal, Any
 
 class Target(object):
     targetCreated = TypedDict(
@@ -11,7 +11,9 @@ class Target(object):
                 {
                     "targetInfo": Types.Target.TargetInfo
                 }
-            )
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
+            
         }
     )
     targetDestroyed = TypedDict(
@@ -24,7 +26,8 @@ class Target(object):
                     "targetId": Types.Target.TargetID,
                     "sessionId": Optional[Types.Target.SessionID]
                 }
-            )
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
         }
     )
     attachedToTarget = TypedDict(
@@ -38,7 +41,8 @@ class Target(object):
                     "targetInfo": Types.Target.TargetInfo,
                     "waitingForDebugger": bool
                 }
-            )
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
         }
     )
     targetInfoChange = TypedDict(
@@ -67,6 +71,116 @@ class Page(object):
                     "parentFrameId": Types.Page.FrameId,
                     "stack": Types.Runtime.StackTrace
                 }
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
+        }
+    )
+    downloadWillBegin = TypedDict(
+        "downloadWillBegin",
+        {
+            "method": Literal["Page.downloadWillBegin"],
+            "params": TypedDict(
+                "downloadwillbegin",
+                {
+                    "frameId": Types.Page.FrameId,
+                    "guid": str,
+                    "url": str,
+                    "suggestedFilename": str
+                } 
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
+        }
+    )
+    fileChooserOpened = TypedDict(
+        "fileChooserOpened",
+        {
+            "method": Literal["Page.fileChooserOpened"],
+            "params": TypedDict(
+                "filechooseropened",
+                {
+                    "frameId": Types.Page.FrameId, # Experimental
+                    "backendNodeId": Types.DOM.BackendNodeId,
+                    "mode": Literal["selectSingle", "selectMultiple"]
+                }
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
+        }
+    )
+    frameNavigated = TypedDict(
+        "frameNavigated",
+        {
+            "method": Literal["Page.frameNavigated"],
+            "sessionId": Types.Target.SessionID,
+            "params": TypedDict(
+                "framenavigated",
+                {
+                    "frame": Types.Page.Frame,
+                    "type": Types.Page.NavigationType
+                }
             )
+        }
+    )
+    documentOpened = TypedDict(
+        "documentOpened",
+        {
+            "method": Literal["Page.documentOpened"],
+            "sessionId": Types.Target.SessionID,
+            "params": TypedDict(
+                "documentopened",
+                {
+                    "frame": Types.Page.Frame
+                }
+            )
+        }
+    )
+
+class Browser(object):
+    downloadWillBegin = TypedDict(
+        "downloadWillBegin",
+        {
+            "method": Literal["Browser.downloadWillBegin"],
+            "params": TypedDict(
+                "downloadwillbegin",
+                {
+                    "frameId": Types.Page.FrameId,
+                    "guid": str,
+                    "url": str,
+                    "suggestedFilename": str
+                } 
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
+        }
+    )
+
+class Debugger(object):
+    scriptParsed = TypedDict(
+        "scriptParsed",
+        {
+            "method": Literal["Debugger.scriptParsed"],
+            "params": TypedDict(
+                "scriptparsed",
+                {
+                    "scriptId": Types.Runtime.ScriptId,
+                    "url": str, # [Script From Remote]
+                    "startLine": int,
+                    "startColumn": int,
+                    "endLine": int,
+                    "endColumn": int,
+                    "executionContextId": Types.Runtime.ExecutionContextId,
+                    "hash": str,
+                    "executionContextAuxData": Optional[Any],
+                    "isLiveEdit": Optional[bool], #Experimental
+                    "sourceMapURL": Optional[str],
+                    "hasSourceURL": Optional[bool],
+                    "isModule": Optional[bool],
+                    "length": int,
+                    "stackTrace": Optional[Types.Runtime.StackTrace], # [Script Generated From]
+                    "codeOffset": int, # Experimental
+                    "scriptLanguage": Optional[Types.Debugger.ScriptLanguage], # Excperimental
+                    "debugSymbols": Optional[Types.Debugger.DebugSymbols], # Experimental
+                    "embedderName": Optional[str], # Experimental
+                }
+            ),
+            "sessionId": Optional[Types.Target.SessionID]
         }
     )
