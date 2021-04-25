@@ -33,14 +33,21 @@ class Handler(object):
     interface: ChromeBridge
     logger: Logger
 
-    def __init_subclass__(cls, interested_event: str, output_events: List[str]) -> None:
+    def __init_subclass__(cls, interested_event: Union[str, List[str]], output_events: List[str]) -> None:
         cls.interested_event = interested_event
         if cls._INSTANCE:
             return super().__init_subclass__()
         cls._INSTANCE = cls()
-        if _handler := (Handler._subhandlers.get(interested_event)):
-            raise AttributeError(f"Attempting to register multiple handler on single type of event. Current Exsit Handler: {_handler.__class__}. Attempted adding Handler: {cls.__class__}")
-        Handler._subhandlers[interested_event] = cls._INSTANCE
+        if isinstance(interested_event, str):
+            if _handler := (Handler._subhandlers.get(interested_event)):
+                raise AttributeError(f"Attempting to register multiple handler on single type of event. Current Exsit Handler: {_handler.__class__}. Attempted adding Handler: {cls.__class__}")
+            Handler._subhandlers[interested_event] = cls._INSTANCE
+        elif isinstance(interested_event, list):
+            for event_ in interested_event:
+                if _handler := (Handler._subhandlers.get(event_)):
+                    raise AttributeError(f"Attempting to register multiple handler on single type of event. Current Exsit Handler: {_handler.__class__}. Attempted adding Handler: {cls.__class__}")
+                Handler._subhandlers[event_] = cls._INSTANCE
+        
         for chromoEvent in output_events:
             if chromoEvent not in Handler._activedevent.keys():
                 Handler._activedevent[chromoEvent] = max(Handler._activedevent.values(), default = 0) + 1
@@ -308,6 +315,7 @@ class TargetAttachedHandler(
             else:
                 # No creation event has to handle
                 pass
+            await self.initTarget(targetId = target_id, targetType = target_type)
             return None
         
         # Frame Creation Only
@@ -753,7 +761,7 @@ class frameAttachedHandler(
 
 class downloadWillBeginHandler(
     Handler, 
-    interested_event = "Page.downloadWillBegin",
+    interested_event = ["Page.downloadWillBegin", "Browser.downloadWillBegin"],
     output_events = ["[File Download Start]"]
 ):
     _INSTANCE = None
@@ -762,10 +770,18 @@ class downloadWillBeginHandler(
         return None
     
     async def handle(self, msg: Events.Browser.downloadWillBegin) -> None:
+        print("[+ Debugging] File download starging...")
         event_ = msg.get('params')
         event_["url"] = urlparse(event_["url"])._asdict()
+        _msg = {
+            "frameUID": self.frameStatusPool[event_.get('frameId')].get('UID'),
+            "frameId": event_.get('frameId'),
+            "downloadUID": event_.get('guid'),
+            "fileName": event_.get('suggestedFilename'),
+            "downloadInfo": event_
+        }
         self.logEvent(
-            msg = json.dumps(event_),
+            msg = json.dumps(_msg),
             origin = "[File Download Start]"
         )
         return None
@@ -1006,7 +1022,8 @@ class frameNavigatedHandler(
 
         originFrameStatus = deepcopy(self.frameStatusPool.get(frameId))
         if not originFrameStatus:
-            print(f"[+ Debugging] In ")
+            print(f"[+ Debugging] In {self.__class__.__name__}, no original navigated frame found.")
+        
         async with self.scheduled_navigation_lock:
             reasons = self.scheduledNavigations.pop(originFrameStatus.get('UID'), {"reason": "user"})
             if not reasons:
@@ -1068,8 +1085,62 @@ class frameRequestNavigationHandler(
             frameUID = event_.get('frameId')
             pass
         async with self.scheduled_navigation_lock:
+            if self.scheduledNavigations.get(frameUID):
+                return None
+            
             self.scheduledNavigations[frameUID] = {
                 "reason": reason if (reason := (self.reason_map.get(event_.get('reason'), None))) else "user",
                 "disposition": None
             }
+        return None
+
+# Seal Done First 
+class frameSheduledNavigationHandler(
+    Handler,
+    interested_event = "Page.frameScheduledNavigation",
+    output_events = []
+):
+    _INSTANCE = None
+
+    def __init__(self):
+        self.reason_map = {
+            "httpHeaderRefreash": "http",
+            "scriptInitiated": "script",
+            "metaTagRefresh": "html"
+        }
+        return None
+    
+    async def handle(self, msg: Events.Page.frameScheduledNavigation):
+        event_ = msg.get('params')
+        async with self.frame_status_lock:
+            frameUID = self.frameStatusPool.get(event_.get('frameId')).get('UID')
+        
+        if not frameUID:
+            frameUID = event_.get('frameId')
+            pass
+        async with self.scheduled_navigation_lock:
+            if self.scheduledNavigations.get(frameUID):
+                return None
+            
+            self.scheduledNavigations[frameUID] = {
+                "reason": reason if (reason := (self.reason_map.get(event_.get('reason'), None))) else "user",
+                "disposition": None
+            }
+        return None
+
+class requestWillBeSentHandler(
+    Handler,
+    interested_event = "Network.requestWillBeSent",
+    output_events = [
+        "[Host Redirect to Host]",
+        "[Script Request to Host]",
+        "[Frame Request to Host]"
+    ]
+):
+    _INSTANCE = None
+
+    def __init__(self) -> None:
+        return None
+    
+    async def handle(self, msg: Events.Network.requestWillBeSent) -> None:
         return None

@@ -1,4 +1,4 @@
-from typing import Dict, List, TypedDict, 
+from typing import Dict, List, TypedDict
 from typing import Optional, Any, Literal, Union
 import enum
 
@@ -6,90 +6,6 @@ Number = Union[int, float]
 
 class Browser(object):
     BrowserContextID = str
-
-class Page(object):
-    FrameId = str
-    AdFrameType = Literal['none', 'child', 'root']
-    SecureContextType = Literal[
-        'Secure', 
-        'SecureLocalhost', 
-        'InsecureScheme', 
-        'InsecureAncestor'
-    ]
-    ClientNavigationReason = Literal[
-        'formSubmissionGet', 
-        'formSubmissionPost', 
-        'httpHeaderRefresh', 
-        'scriptInitiated', 
-        'metaTagRefresh', 
-        'pageBlockInterstitial', 
-        'reload', 
-        'anchorClick'
-    ]
-    ClientNavigationDisposition = Literal[
-        'currentTab', 
-        'newTab', 
-        'newWindow', 
-        'download'
-    ]
-    CrossOriginIsolatedContextType = Literal[
-        'Isolated', 
-        'NotIsolated', 
-        'NotIsolatedFeatureDisabled'
-    ]
-    GatedAPIFeatures = Literal[
-        'SharedArrayBuffers', 
-        'SharedArrayBuffersTransferAllowed', 
-        'PerformanceMeasureMemory', 
-        'PerformanceProfile'
-    ]
-    Frame = TypedDict(
-        "Frame",
-        {
-            "id": FrameId,
-            "parentId": Optional[str],
-            "loaderId": Network.LoaderId,
-            "name": Optional[str],
-            "url": str,
-            "urlFragment": Optional[str],
-            "domainAndRegistry": str,
-            "securityOrigin": str,
-            "mimeType": str,
-            "unreachableUrl": Optional[str],
-            "adFrameType": Optional[AdFrameType],
-            "secureContextType": SecureContextType,
-            "crossOriginIsolatedContextType": CrossOriginIsolatedContextType,
-            "gatedAPIFeatures": List[GatedAPIFeatures]
-        }
-    )
-    FrameTree = TypedDict(
-        "FrameTree",
-        {
-            "frame": Frame,
-            "childFrames": Optional[list]
-        }
-    )
-    NavigationType = Literal["Navigation", "BackForwardCacheRestore"]
-
-class Target(object):
-    TargetID = str # TargetID can be Page.FrameID.
-    SessionID = str # The unique session identifier every debugged target connected by python
-    ValidTypes = ('page', 'iframe', 'browser', 'script')
-
-    TargetInfo = TypedDict(
-        "TargetInfo",
-        {
-            "targetId": TargetID,
-            "type": str,
-            "title": str,
-            "url": str,
-            "attached": bool,
-            "openerId": Optional[TargetID],
-            "canAccessOpener": bool,
-            "openerFrameId": Optional[Page.FrameId],
-            "browserContextId": Optional[Browser.BrowserContextID]
-        }
-    )
 
 class Security(object):
     MixedContentType = Literal[
@@ -104,7 +20,7 @@ class Security(object):
         "secure", 
         "info", 
         "insecure-broken"
-    ],
+    ]
     CertificateId = int
 
 class Runtime(object):
@@ -140,55 +56,6 @@ class Runtime(object):
     )
     pass
 
-class Generic(object):
-
-    TabInfo = TypedDict(
-        "TabInfo",
-        {
-            "description": str,
-            "devtoolsFrontendUrl": str,
-            "id": str,
-            "title": str,
-            "url": str,
-            "webSocketDebuggerUrl": str
-        }
-    )
-
-    GlobalDebugableInfo = TypedDict(
-        "GlobalDebugableInfo",
-        {
-            "Browser": str,
-            "Protocol-Version": str,
-            "User-Agent": str,
-            "V8-Version": str,
-            "Webkit-Version": str,
-            "webSocketDebuggerUrl": str
-        }
-    )
-
-    DebugCommand = TypedDict(
-        "DebugCommand",
-        {
-            "id": Optional[int],
-            "method": str,
-
-            #This is used when using flatten mode. It specify the more accurate target method.
-            "sessionId": Optional[Target.SessionID],
-            "params": Optional[Dict[str, str]]
-        }
-    )
-
-    DebugReply = TypedDict(
-        "DebugReply",
-        {
-            # Message id `int` specified in DebugCommand, if you have.
-            "id": int,
-            
-            # The <RETURN OBJECT> mentioned in Chrome Devtools Protocols
-            "result": Dict[str, Any]
-        }
-    )
-
 class DOM(object):
     BackendNodeId = int
 
@@ -203,6 +70,7 @@ class Debugger(object):
     )
 
 class Network(object):
+
     LoaderId = str
     RequestId = str
     HTTPMethod = Literal[
@@ -380,5 +248,138 @@ class Network(object):
             "lineNumber": Optional[int],
             "columnNumber": Optional[int],
             "requestId": Optional[RequestId]
+        }
+    )
+
+class Page(object):
+    FrameId = str
+    AdFrameType = Literal['none', 'child', 'root']
+    SecureContextType = Literal[
+        'Secure', 
+        'SecureLocalhost', 
+        'InsecureScheme', 
+        'InsecureAncestor'
+    ]
+    ClientNavigationReason = Literal[
+        'formSubmissionGet', 
+        'formSubmissionPost', 
+        'httpHeaderRefresh', 
+        'scriptInitiated', 
+        'metaTagRefresh', 
+        'pageBlockInterstitial', 
+        'reload', 
+        'anchorClick'
+    ]
+    ClientNavigationDisposition = Literal[
+        'currentTab', 
+        'newTab', 
+        'newWindow', 
+        'download'
+    ]
+    CrossOriginIsolatedContextType = Literal[
+        'Isolated', 
+        'NotIsolated', 
+        'NotIsolatedFeatureDisabled'
+    ]
+    GatedAPIFeatures = Literal[
+        'SharedArrayBuffers', 
+        'SharedArrayBuffersTransferAllowed', 
+        'PerformanceMeasureMemory', 
+        'PerformanceProfile'
+    ]
+    Frame = TypedDict(
+        "Frame",
+        {
+            "id": FrameId,
+            "parentId": Optional[str],
+            "loaderId": Network.LoaderId,
+            "name": Optional[str],
+            "url": str,
+            "urlFragment": Optional[str],
+            "domainAndRegistry": str,
+            "securityOrigin": str,
+            "mimeType": str,
+            "unreachableUrl": Optional[str],
+            "adFrameType": Optional[AdFrameType],
+            "secureContextType": SecureContextType,
+            "crossOriginIsolatedContextType": CrossOriginIsolatedContextType,
+            "gatedAPIFeatures": List[GatedAPIFeatures]
+        }
+    )
+    FrameTree = TypedDict(
+        "FrameTree",
+        {
+            "frame": Frame,
+            "childFrames": Optional[list]
+        }
+    )
+    NavigationType = Literal["Navigation", "BackForwardCacheRestore"]
+
+class Target(object):
+    TargetID = str # TargetID can be Page.FrameID.
+    SessionID = str # The unique session identifier every debugged target connected by python
+    ValidTypes = ('page', 'iframe', 'browser', 'script')
+
+    TargetInfo = TypedDict(
+        "TargetInfo",
+        {
+            "targetId": TargetID,
+            "type": str,
+            "title": str,
+            "url": str,
+            "attached": bool,
+            "openerId": Optional[TargetID],
+            "canAccessOpener": bool,
+            "openerFrameId": Optional[Page.FrameId],
+            "browserContextId": Optional[Browser.BrowserContextID]
+        }
+    )
+
+class Generic(object):
+
+    TabInfo = TypedDict(
+        "TabInfo",
+        {
+            "description": str,
+            "devtoolsFrontendUrl": str,
+            "id": str,
+            "title": str,
+            "url": str,
+            "webSocketDebuggerUrl": str
+        }
+    )
+
+    GlobalDebugableInfo = TypedDict(
+        "GlobalDebugableInfo",
+        {
+            "Browser": str,
+            "Protocol-Version": str,
+            "User-Agent": str,
+            "V8-Version": str,
+            "Webkit-Version": str,
+            "webSocketDebuggerUrl": str
+        }
+    )
+
+    DebugCommand = TypedDict(
+        "DebugCommand",
+        {
+            "id": Optional[int],
+            "method": str,
+
+            #This is used when using flatten mode. It specify the more accurate target method.
+            "sessionId": Optional[Target.SessionID],
+            "params": Optional[Dict[str, str]]
+        }
+    )
+
+    DebugReply = TypedDict(
+        "DebugReply",
+        {
+            # Message id `int` specified in DebugCommand, if you have.
+            "id": int,
+            
+            # The <RETURN OBJECT> mentioned in Chrome Devtools Protocols
+            "result": Dict[str, Any]
         }
     )
