@@ -1,5 +1,5 @@
 import chrometypes as Types
-from typing import Type, TypedDict, Optional, Literal, Any
+from typing import Type, TypedDict, Optional, Literal, Any, Union
 
 class Target(object):
     targetCreated = TypedDict(
@@ -149,6 +149,22 @@ class Page(object):
             )
         }
     )
+    frameScheduledNavigation = TypedDict(
+        "frameScheduledNavigation",
+        {
+            "method": Literal["Page.frameScheduledNavigation"],
+            "sessionId": Types.Target.SessionID,
+            "params": TypedDict(
+                "frameshedulednavigation",
+                {
+                    "frameId": Types.Page.FrameId,
+                    "delay": Union[int, float],
+                    "reason": Types.Page.ClientNavigationReason,
+                    "url": str
+                }
+            )
+        }
+    )
 
 class Browser(object):
     downloadWillBegin = TypedDict(
@@ -198,5 +214,34 @@ class Debugger(object):
                 }
             ),
             "sessionId": Optional[Types.Target.SessionID]
+        }
+    )
+
+class Network(object):
+    requestWillBeSent = TypedDict(
+        "requestWillBeSent",
+        {
+            "requestId": Types.Network.RequestId,
+            "loaderId": Types.Network.LoaderId,
+            "documentURL": str,
+            "request": Types.Network.Request,
+            "timestamp": Types.Network.MonotonicTime,
+            "wallTime": Types.Network.TimeSinceEpoch,
+            "initiator": Types.Network.Initiator,
+            "redirectResponse": Optional[Types.Network.Response],
+            "type": Optional[Types.Network.ResourceType],
+            "frameId": Optional[Types.Page.FrameId],
+            "hasUserGesture": Optional[bool]
+        }
+    )
+    responseReceived = TypedDict(
+        "responseReceived",
+        {
+            "requestId": Types.Network.RequestId,
+            "loaderId": Types.Network.LoaderId,
+            "timestamp": Types.Network.MonotonicTime,
+            "type": Types.Network.ResourceType,
+            "response": Types.Network.Response,
+            "frameId": Optional[Types.Page.FrameId]
         }
     )

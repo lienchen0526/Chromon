@@ -1,11 +1,11 @@
-from typing import Dict, List, TypedDict, Optional, Any, Literal
+from typing import Dict, List, TypedDict, 
+from typing import Optional, Any, Literal, Union
 import enum
+
+Number = Union[int, float]
 
 class Browser(object):
     BrowserContextID = str
-
-class Network(object):
-    LoaderId = str
 
 class Page(object):
     FrameId = str
@@ -32,14 +32,12 @@ class Page(object):
         'newWindow', 
         'download'
     ]
-    CrossOriginIsolatedContextType = Literal\
-    [
+    CrossOriginIsolatedContextType = Literal[
         'Isolated', 
         'NotIsolated', 
         'NotIsolatedFeatureDisabled'
     ]
-    GatedAPIFeatures = Literal\
-    [
+    GatedAPIFeatures = Literal[
         'SharedArrayBuffers', 
         'SharedArrayBuffersTransferAllowed', 
         'PerformanceMeasureMemory', 
@@ -92,6 +90,22 @@ class Target(object):
             "browserContextId": Optional[Browser.BrowserContextID]
         }
     )
+
+class Security(object):
+    MixedContentType = Literal[
+        'blockable', 
+        'optionally-blockable', 
+        'none'
+    ]
+    SecurityState = Literal[
+        "unknown", 
+        "neutral", 
+        "insecure", 
+        "secure", 
+        "info", 
+        "insecure-broken"
+    ],
+    CertificateId = int
 
 class Runtime(object):
     UniqueDebuggerId = str
@@ -185,5 +199,186 @@ class Debugger(object):
         {
             "type": Literal["None", "SourceMap", "EmbededDWARF", "ExternalDWARF"],
             "externalURL": Optional[str]
+        }
+    )
+
+class Network(object):
+    LoaderId = str
+    RequestId = str
+    HTTPMethod = Literal[
+        "GET", 
+        "POST", 
+        "DELETE", 
+        "HEAD",
+        "PUT",
+        "CONNECT",
+        "OPTIONS",
+        "TRACE",
+        "PATCH"
+    ]
+    Headers = Dict[str, Any]
+    PostDataEntry = str
+    ResourcePriority = Literal[
+        "VeryLow", 
+        "Low", 
+        "Medium", 
+        "High", 
+        "VeryHigh"
+    ]
+    ReferrerPolicy = Literal[
+        "unsafe-url",
+        "no-referrer-when-downgrade", 
+        "no-referrer", 
+        "origin", 
+        "origin-when-cross-origin", 
+        "same-origin", 
+        "strict-origin", 
+        "strict-origin-when-cross-origin"
+    ]
+    TrustTokenOperationType = Literal[
+        "Issuance", 
+        "Redemption", 
+        "Signing"
+    ]
+    ResourceType = Literal[
+        "Document", "Stylesheet", "Image", 
+        "Media", "Font", "Script", "TextTrack", 
+        "XHR", "Fetch", "EventSource", "WebSocket", 
+        "Manifest", "SignedExchange", "Ping", 
+        "CSPViolationReport", "Preflight", "Other"
+    ]
+    TrustTokenParams = TypedDict(
+        "TrustTokenParams",
+        {
+            "type": TrustTokenOperationType,
+            "refreshPolicy": Literal["UseCached", "Refresh"],
+            "issuers": Optional[List[str]]
+        }
+    )
+    MonotonicTime = Number
+    TimeSinceEpoch = Number
+    ServiceWorkerResponseSource = Literal[
+        "cache-storage", 
+        "http-cache", 
+        "fallback-code", 
+        "network"
+    ]
+    CertificateTransparencyCompliance = Literal[
+        "unknown", "not-compliant", "compliant"
+    ]
+    SignedCertificateTimestamp = TypedDict(
+        "SignedCertificateTimestamp",
+        {
+            "status": str,
+            "origin": str,
+            "logDescription": str,
+            "logId": str,
+            "timestamp": TimeSinceEpoch,
+            "hashAlgorithm": str,
+            "signatureAlgorithm": str,
+            "signatureData": str
+        }
+    )
+    SecurityDetails = TypedDict(
+        "SecurityDetails",
+        {
+            "protocol": str, # eg. "TLS 1.2", "QUIC"
+            "keyExchange": str,
+            "keyExchangeGroup": Optional[str],
+            "cipher": str,
+            "mac": Optional[str], # TLS MAC. Note that AEAD ciphers do not have separate MACs.
+            "certificateId": Security.CertificateId,
+            "subjectName": str,
+            "sanList": List[str],
+            "issuer": str,
+            "validFrom": TimeSinceEpoch,
+            "validTo": TimeSinceEpoch,
+            "signedCertificateTimestampList": List[SignedCertificateTimestamp],
+            "certificateTransparencyCompliance": CertificateTransparencyCompliance
+        }
+    )
+    ResourceTiming = TypedDict(
+        "ResourceTiming",
+        {
+            "requestTime": Number,
+            "proxyStart": Number,
+            "proxyEnd": Number,
+            "dnsStart": Number,
+            "dnsEnd": Number,
+            "connectStart": Number,
+            "connectEnd": Number,
+            "sslStart": Number,
+            "sslEnd": Number,
+            "workerStart": Number,
+            "workerReady": Number,
+            "workerFetchStart": Number,
+            "workerRespondWithSettled": Number,
+            "sendStart": Number,
+            "sendEnd": Number,
+            "pushStart": Number,
+            "pushEnd": Number,
+            "receiveHeadersEnd": Number
+        }
+    )
+    Request = TypedDict(
+        "Request",
+        {
+            "url": str,
+            "urlFragment": Optional[str],
+            "method": HTTPMethod,
+            "headers": Headers,
+            "postData": Optional[str],
+            "hasPostData": Optional[bool],
+            "postDataEntries": Optional[List[PostDataEntry]],
+            "refererPolicy": ReferrerPolicy,
+            "isLinkPreload": Optional[bool],
+            "mixedContentType": Optional[Security.MixedContentType],
+            "initialPriority": ResourcePriority,
+            "trustTokenParams": TrustTokenParams
+        }
+    )
+    Response = TypedDict(
+        "Response",
+        {
+            "url": str,
+            "status": int,
+            "statusText": str,
+            "headers": Headers,
+            "headersText": Optional[str],
+            "mimeType": str,
+            "requestHeaders": Headers,
+            "requestHeadersText": str,
+            "connectionReused": bool,
+            "connectionId": Number,
+            "remoteIPAddress": Optional[str],
+            "remotePort": Optional[int],
+            "fromDiskCache": Optional[bool],
+            "fromPrefetchCache": Optional[bool],
+            "encodedDataLength": Number,
+            "timing": Optional[ResourceTiming],
+            "serviceWorkerResponseSource": Optional[ServiceWorkerResponseSource],
+            "responseTime": Optional[TimeSinceEpoch],
+            "cacheStorageCacheName": Optional[str],
+            "protocol": Optional[str],
+            "securityState": Security.SecurityState,
+            "securityDetails": Optional[SecurityDetails]
+        }
+    )
+    Initiator = TypedDict(
+        "Initiator",
+        {
+            "type": Literal[
+                "parser", 
+                "script", 
+                "preload", 
+                "SignedExchange", 
+                "preflight", 
+                "other"
+            ],
+            "stack": Optional[Runtime.StackTrace],
+            "url": Optional[str],
+            "lineNumber": Optional[int],
+            "columnNumber": Optional[int],
+            "requestId": Optional[RequestId]
         }
     )
