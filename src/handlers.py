@@ -1,12 +1,16 @@
-from typing import Callable, Dict, Literal, Optional, Tuple, Union, List
-import chromeevents as Events
-import chrometypes as Types
+from typing import Callable, Dict, Literal, Optional, Tuple, TypedDict, Union, List
 import json
 import asyncio
 import hashlib
 import copy
 from urllib.parse import urlparse
+import uuid
+from copy import deepcopy
+
 from core import ChromeBridge, Logger
+import chromeevents as Events
+import chrometypes as Types
+from chromods import FrameStatus, FrameStatusPool, ScheduledNavigationPool, ScriptInfo
 
 class Handler(object):
     """
@@ -16,11 +20,16 @@ class Handler(object):
 
     cmd_lock = asyncio.Lock()
     trgt_session_lock = asyncio.Lock()
+    frame_status_lock = asyncio.Lock()
+    scheduled_navigation_lock = asyncio.Lock()
 
     _subhandlers: Dict[str, type] = {}
     _activedevent: Dict[str, int] = {}
     _pending_command: Dict[int, Types.Generic.DebugReply] = {}
     _target_session: Dict[Types.Target.TargetID, Union[Types.Target.SessionID, Literal["Pending"]]] = {}
+    frameStatusPool: FrameStatusPool = {}
+    scheduledNavigations: ScheduledNavigationPool = {}
+
     interface: ChromeBridge
     logger: Logger
 
@@ -33,7 +42,11 @@ class Handler(object):
             raise AttributeError(f"Attempting to register multiple handler on single type of event. Current Exsit Handler: {_handler.__class__}. Attempted adding Handler: {cls.__class__}")
         Handler._subhandlers[interested_event] = cls._INSTANCE
         for chromoEvent in output_events:
-            Handler._activedevent[chromoEvent] = max(Handler._activedevent.values(), default = 0) + 1
+            if chromoEvent not in Handler._activedevent.keys():
+                Handler._activedevent[chromoEvent] = max(Handler._activedevent.values(), default = 0) + 1
+            else:
+                # The output event can be emit by multiple handler.
+                pass
         return super().__init_subclass__()
     
     def __init__(self, interface: ChromeBridge, logger: Logger) -> None:
@@ -95,7 +108,12 @@ class Handler(object):
             if msg:
                 return msg
     
-    def logEvent(self, msg:str, origin: Optional[str] = None, debug: bool = False) -> None:
+    def logEvent(
+        self, 
+        msg:str, 
+        origin: Optional[str] = None, 
+        debug: bool = False
+    ) -> None:
         event_id = Handler._activedevent.get(origin, None)
         assert event_id is not None
 
@@ -217,10 +235,15 @@ class Handler(object):
         """
         raise NotImplementedError("Metaclass not implement catchReply yet")
 
+# Seal Done First
 class TargetAttachedHandler(
     Handler, 
     interested_event = "Target.attachedToTarget", 
-    output_events = ["[Target Attached]"]
+    output_events = [
+        "[Main Frame Created]", 
+        "[Sub-Frame Created]", 
+        "[Frame Info Update to]"
+    ]
 ):
     _INSTANCE = None
     def __init__(self) -> None:
@@ -232,15 +255,86 @@ class TargetAttachedHandler(
         t['targetSessionId'] = msg.get('params').get('sessionId')
 
         session_id = msg.get('params').get('sessionId')
-        target_id = msg.get('params').get('targetInfo').get('targetId')
-        target_type = msg.get('params').get('targetInfo').get('type')
+        target_id = t.get('targetId')
+        target_type = t.get('type')
 
         async with super().trgt_session_lock:
             super()._target_session[target_id] = session_id
 
+        if not t.get('type') in ['page', 'iframe']:
+            # No Need to memorize it.
+            await self.initTarget(targetId = target_id, targetType = target_type)
+            return None
+        
+        # Processing frameStatusPool
+        fid = t.get('targetId')
+        if (frameStatus := self.frameStatusPool.get(fid)):
+            #Frame Info Update Event and maybe frame create event
+            _msg = {
+                "frameOriginUID": frameStatus.get('UID'),
+                "frameId": fid,
+            }
+            self.frameStatusPool[fid]['title'] = t.get('title')
+            self.frameStatusPool[fid]['url'] = t.get('url')
+            self.frameStatusPool[fid]['mainFrame'] = True if t.get('type') == 'page' else False
+            self.frameStatusPool[fid]['UID'] = uuid.uuid4().__str__()
+
+            _msg['frameNewUID'] = self.frameStatusPool[fid]['UID']
+            _msg['frameInfo'] = deepcopy(self.frameStatusPool[fid])
+            _msg['frameInfo'].pop('contactedDomains')
+            _msg['frameInfo'].pop('scriptStatus')
+
+            self.logEvent(
+                msg = json.dumps(_msg),
+                origin = "[Frame Info Update to]"
+            )
+            if (_openerFrameId := (t.get('openerFrameId'))):
+                self.frameStatusPool[fid]['openerFrameUID'] =\
+                    uid if (uid := (self.frameStatusPool.get(_openerFrameId).get('UID'))) else _openerFrameId
+                _msg = {
+                    "parentFrameUID": self.frameStatusPool[fid]['openerFrameUID'],
+                    "frameUID": self.frameStatusPool[fid]['UID'],
+                    "frameId": fid,
+                    "frameInfo": deepcopy(self.frameStatusPool[fid])
+                }
+
+                _msg['frameInfo'].pop('contactedDomains')
+                _msg['frameInfo'].pop('scriptStatus')
+
+                self.logEvent(
+                    msg = json.dumps(_msg),
+                    origin = "[Main Frame Created]" if self.frameStatusPool[fid]['mainFrame'] else "[Sub-Frame Created]"
+                )
+            else:
+                # No creation event has to handle
+                pass
+            return None
+        
+        # Frame Creation Only
+        frameStatus = {
+            "loaderId": None,
+            "title": t.get('title'),
+            "url": t.get('url'),
+            "mainFrame": True if t.get('type') == 'page' else False,
+            "UID": uuid.uuid4().__str__(),
+            "contactedDomains": set(),
+            "scriptStatus": {}
+        }
+        async with self.frame_status_lock:
+            self.frameStatusPool[t.get('targetId')] = frameStatus
+        _msg = {
+            "parentFrameUID": self.frameStatusPool.get(t.get('openerFrameId')),
+            "frameUID": frameStatus.get('UID'),
+            "frameId": t.get('targetId'),
+            "frameInfo": deepcopy(frameStatus)
+        }
+
+        _msg['frameInfo'].pop('contactedDomains')
+        _msg['frameInfo'].pop('scriptStatus')
+
         self.logEvent(
-            msg = json.dumps(t),
-            origin = "[Target Attached]"
+            msg = json.dumps(_msg),
+            origin = "[Main Frame Created]" if frameStatus.get('mainFrame') else "[Sub-Frame Created]"
         )
         await self.initTarget(targetId = target_id, targetType = target_type)
         return None
@@ -447,7 +541,7 @@ class TargetAttachedHandler(
 class TargetCreatedHandler(
     Handler, 
     interested_event = "Target.targetCreated",
-    output_events = ["[New Target Created]"]
+    output_events = []
 ):
     _INSTANCE = None
     def __init__(self) -> None:
@@ -469,10 +563,6 @@ class TargetCreatedHandler(
                     if not _pending:
                         self._target_session[t.get("targetId")] = "Pending"
                 if not _pending:
-                    self.logEvent(
-                        msg = json.dumps(t),
-                        origin = "[New Target Created]"
-                    )
                     await self._attachToTarget(t)
                 else:
                     # There are same Target Creation in previous
@@ -530,10 +620,12 @@ class targetInfoChangeHandler(
             "targetId": t.get('targetId'),
             "targetInfo": t
         }
+        """
         self.logEvent(
             msg = json.dumps(well_msg),
             origin = "[Target Update to]"
         )
+        """
         return None
     
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):
@@ -569,11 +661,15 @@ class targetDestroyHandler(
 
     async def catchReply(self, command: Types.Generic.DebugCommand, msg: Types.Generic.DebugReply):
         return None
-    
+
+# Seal Done First    
 class frameAttachedHandler(
     Handler, 
     interested_event = "Page.frameAttached",
-    output_events = ["[Frame Attach to Frame]"]
+    output_events = [
+        "[Frame Attach to Frame]", 
+        "[Script Create Sub-Frame]"
+    ]
 ):
     _INSTANCE = None
 
@@ -582,20 +678,78 @@ class frameAttachedHandler(
     
     async def handle(self, msg: Events.Page.frameAttached) -> None:
         event_ = msg.get('params')
-        stack_ = event_.get('stack')
+        targetId = event_.get('parentFrameId')
+
+        backendTargetId: Types.Target.TargetID = next(
+            filter(
+                lambda x: x[1] == msg.get('sessionId'),
+                super()._target_session.items()
+            )
+        )[0]
+
+        targetFrameStatus = deepcopy(self.frameStatusPool.get(targetId))
+        if not targetFrameStatus:
+            print(f"[+ Debugging] In {self.__class__.__name__} event, target frame not found in the frameId: {targetId}")
+        
+        frameStatus: FrameStatus = {
+            "loaderId": None,
+            "openerFrameUID": None,
+            "title": None,
+            "url": None,
+            "mainFrame": None,
+            "UID": uuid.uuid4().__str__(),
+            "contactedDomains": set(),
+            "scriptStatus": {}
+        }
+        self.frameStatusPool[event_.get('frameId')] = frameStatus
+
+        stack_: Types.Runtime.StackTrace = event_.get('stack')
+
         if stack_:
-            event_['stack']['callFrames'] = stack_.get('callFrames')[0]
-            event_['stack']['callFrames']['url'] = urlparse(url = event_.get('stack').get('callFrames').get('url'))._asdict()
-            event_['stack']['callFrames'].pop('lineNumber')
-            event_['stack']['callFrames'].pop('columnNumber')
+            # Emit Script create subframe
+            for callframe_ in stack_.get('callFrames'):
+                scriptInfo: ScriptInfo = targetFrameStatus.get('scriptStatus').get(callframe_.get('scriptId'))
+                if scriptInfo: break
+            
+            if not scriptInfo:
+                backendTargetStatus = deepcopy(self.frameStatusPool.get(backendTargetId))
+            
+            for callframe_ in stack_.get('callFrames'):
+                if scriptInfo: break
+                scriptInfo: ScriptInfo = backendTargetStatus.get('scriptStatus').get(callframe_.get('scriptId'))
+            
+            stack_bottom = stack_.get('callFrames')[0]
+            _msg = {
+                "scriptDomainHash": ("/".join(
+                    [
+                        scriptInfo.get('domain'),
+                        scriptInfo.get('contentHash')
+                    ]) if scriptInfo else stack_bottom
+                ),
+                "frameUID": frameStatus.get('UID'),
+                "frameId": event_.get('frameId')
+            }
+            self.logEvent(
+                msg = json.dumps(_msg),
+                origin = "[Script Create Sub-Frame]"
+            )
         else:
             pass
+        _msg = {
+            "parentFrameUID": self.frameStatusPool.get(targetId).get('UID'),
+            "parentFrameId": targetId,
+            "frameUID": frameStatus.get('UID'),
+            "frameId": event_.get('frameId'),
+            "frameInfo": deepcopy(frameStatus)
+        }
+        _msg['frameInfo'].pop('contactedDomains')
+        _msg['frameInfo'].pop('scriptStatus')
+
         self.logEvent(
-            msg = json.dumps(event_),
+            msg = json.dumps(_msg),
             origin = "[Frame Attach to Frame]"
         )
         return None
-
 
 class downloadWillBeginHandler(
     Handler, 
@@ -635,10 +789,15 @@ class fileChooserOpenedHandler(
         )
         return None
 
+# Seal Done First 
 class scriptParsedHandler(
     Handler, 
     interested_event = "Debugger.scriptParsed",
-    output_events = ["[Script Loaded From Remote]", "[Script Alias From]"]
+    output_events = [
+        "[Frame Execute Script]", 
+        "[Script Initiate Remote Script]",
+        "[Script Reference to]"
+    ]
 ):
     """In this handler, we will be able to see the event of remote javascript loaded
     by local v8. In face, the script parsed is not so important. If we have network
@@ -666,75 +825,251 @@ class scriptParsedHandler(
         _scheme = event_.get("url").get("scheme")
         if not (_scheme == 'https' or _scheme == 'http'):
             return None
-        
-        if event_.get("url"):
-            self.m.update(
-                "".join([event_.get('contentHash', ""), event_.get('url').get('netloc', "")]).encode()
-            )
-            event_['targetId'] = next(
-                filter(
-                    lambda x: x[1] == msg.get('sessionId'), 
-                    self._target_session.items()
-                ), 
-                ("unknown", "")
-            )[0]
+        event_['targetId'] = next(
+            filter(
+                lambda x: x[1] == msg.get('sessionId'), 
+                self._target_session.items()
+            ), 
+            ("unknown", "")
+        )[0]
+        """
+        1. If url exist: 
+            i.   [Frame Execute Script] will be triggered.
+            ii.  statusFramePool will add a script
+        2. If stack exist: 
+            i.   no event triggered.
+            ii.  statusFramePool updated a script
+        3. If both exist:
+            i.   [Script initiate Remote Script] event triggered.
+            ii.  [Frame Execute Script] will be triggered.
+            ii.  statusFramePool will update a script 
+        """
+        tid = event_['targetId']
+        sid = event_.get('scriptId')
+        frameStatus = self.frameStatusPool.get(tid)
+        if not frameStatus:
+            print("[+ debugging] Error get frame status")
 
-            event_['originContentHash'] = self.m.hexdigest()
+        if _scheme and event_.get('stack'):
+            # Print Debugging information
+            stack_bottom = event_.get('stack').get('callFrames')[-1]
+            psid = stack_bottom.get('scriptId')
+            if not (psinfo := (frameStatus.get('scriptStatus').get(stack_bottom.get('scriptId')))):
+                print(f"[+ No parent script found] {event_}")
+            async with self.frame_status_lock:
+                self.frameStatusPool[tid]['scriptStatus'][sid] ={
+                    "domain": event_.get('url').get('netloc', "Null"),
+                    "contentHash": event_.get('contentHash', "")
+                }
+                # Emit [Script initiate Remote Script] Event
+                try:
+                    self.frameStatusPool[tid]['scriptStatus'][psid]['domain']
+                except:
+                    print(f"[+ debugging] tid: {tid}")
+                    print(f"[+ debugging] psid: {psid}")
+                _msg = {
+                    "parentScript": {
+                        "id": psid,
+                        "domain": self.frameStatusPool[tid]['scriptStatus'][psid]['domain'],
+                        "domainHash": "/".join(
+                            [
+                                self.frameStatusPool[tid]['scriptStatus'][psid]['domain'],
+                                self.frameStatusPool[tid]['scriptStatus'][psid]['contentHash'],
+                            ]
+                        )
+                    },
+                    "childScript": {
+                        "id": sid,
+                        "domain": self.frameStatusPool[tid]['scriptStatus'][sid]['domain'],
+                        "domainHash": "/".join(
+                            [
+                                self.frameStatusPool[tid]['scriptStatus'][sid]['domain'],
+                                self.frameStatusPool[tid]['scriptStatus'][sid]['contentHash']
+                            ]
+                        )
+                    }
+                }
+                _executionmsg = {
+                    "frameUID": uid if (uid := (frameStatus.get('UID'))) else tid,
+                    "Script": {
+                        "id": sid,
+                        "domain": self.frameStatusPool[tid]['scriptStatus'][sid]['domain'],
+                        "domainHash": "/".join(
+                            [
+                                self.frameStatusPool[tid]['scriptStatus'][sid]['domain'],
+                                self.frameStatusPool[tid]['scriptStatus'][sid]['contentHash']
+                            ]
+                        )
+                    }
+                }
             self.logEvent(
-                msg = json.dumps(event_),
-                origin = "[Script Loaded From Remote]"
+                msg = json.dumps(_msg),
+                origin = "[Script Initiate Remote Script]"
+            )
+            self.logEvent(
+                msg = json.dumps(_executionmsg),
+                origin = "[Frame Execute Script]"
             )
             return None
 
-        elif event_.get('stack'):
-            """We do not discuss script execute script first.
-            """
-            return None
-            url_ = event_.get('url')
-            assert not url_, f"f{event_}"
-            event_.pop("url")
-            event_['stack']['callFrames'] = event_['stack']['callFrames'][0]
-            event_['stack']['callFrames']['url'] = urlparse(url = event_.get('stack').get('callFrames').get('url'))._asdict()
-            event_['stack']['callFrames'].pop('lineNumber')
-            event_['stack']['callFrames'].pop('columnNumber')
-        
+        if _scheme:
+            async with self.frame_status_lock:
+                self.frameStatusPool[tid]['scriptStatus'][sid] ={
+                    "domain": event_.get('url').get('netloc', "Null"),
+                    "contentHash": event_.get('contentHash', "")
+                }
+                _executionmsg = {
+                    "frameUID": uid if (uid := (frameStatus.get('UID'))) else tid,
+                    "Script": {
+                        "id": sid,
+                        "domain": self.frameStatusPool[tid]['scriptStatus'][sid]['domain'],
+                        "domainHash": "/".join(
+                            [
+                                self.frameStatusPool[tid]['scriptStatus'][sid]['domain'],
+                                self.frameStatusPool[tid]['scriptStatus'][sid]['contentHash']
+                            ]
+                        )
+                    }
+                }
             self.logEvent(
-                msg = json.dumps(event_), 
-                origin = "[Script Generated By Script]"
+                msg = json.dumps(_executionmsg),
+                origin = "[Frame Execute Script]"
             )
+            return None
+        if event_.get('stack'):
+            stack_bottom = event_.get('stack').get('callFrames')[0]
+            psid = stack_bottom.get('scriptId')
+            if not (psid := (frameStatus.get('scriptStatus').get(stack_bottom.get('scriptId')))):
+                print(f"[+ No parent script found] {event_}")
+            async with self.frame_status_lock:
+                self.frameStatusPool[tid]['scriptStatus'][sid] = self.frameStatusPool[tid]['scriptStatus'][psid]
+                print(f"[+ Debugging] Add ScriptId: {sid} to targetId: {tid}")
+            _msg = {
+                "scriptId": sid,
+                "frameUID": self.frameStatusPool[tid]['UID'],
+                "frameId": tid,
+                "referenceScriptId": psid
+            }
+            self.logEvent(
+                msg = json.dumps(_msg),
+                origin = "[Script Reference to]"
+            )
+            return None
         return None
 
+# Seal Done First 
 class frameNavigatedHandler(
     Handler,
     interested_event = "Page.frameNavigated",
-    output_events = ["[Frame Navigate To]"]
+    output_events = [
+        "[Frame Navigate by Script]", 
+        "[Frame Navigate by HTTP]", 
+        "[Frame Navigate by HTML]", 
+        "[Frame Navigate by User]"
+    ]
 ):
     _INSTANCE = None
 
     def __init__(self) -> None:
+        self.initiator_map = {
+            "user": "User",
+            "http": "HTTP",
+            "html": "HTML",
+            "script": "Script"
+        }
         return None
     
     async def handle(self, msg: Events.Page.frameNavigated) -> None:
+        """
+        1. Get navigation information from scheduledNavigations
+        2. Delete item in scheduledNavigations
+        2. Update frameStatusPool, ie. UID, contactedDomains, scriptStatus
+        3. Emit [Frame Navigate by User/HTTP/HTML]
+        """
         targetId: Types.Target.TargetID = next(
             filter(
                 lambda x: x[1] == msg.get('sessionId'),
                 super()._target_session.items()
             )
         )[0]
-        event_ = msg.get('params')
-        extractedFrame = {
-            "frameId": event_.get('frame').get('id'),
-            "parentFrameId": event_.get('frame').get('parentId'),
-            "url": urlparse(url = event_.get('frame').get('url'))._asdict(),
-            "loaderId": event_.get('frame').get('loaderId'),
-            "name": event_.get('frame').get('name'),
-            "securityOrigin": event_.get('frame').get('securityOrigin'),
-            "mimeType": event_.get('frame').get('mimeType')
+
+        event_: Types.Page.Frame = msg.get('params').get('frame')
+        frameId = event_.get('id')
+
+        # Basic sanitizing check
+        if not targetId == frameId:
+            #print(f"[+ Debugging] targetId: {targetId} is not consistent ot frameId: {frameId}")
+            # This might happen in when frame just navigated, but still not attachable.
+            # If frame become attachable, we may attach it asap.
+            # So, `frameId` still dominent.
+            pass
+
+        originFrameStatus = deepcopy(self.frameStatusPool.get(frameId))
+        if not originFrameStatus:
+            print(f"[+ Debugging] In ")
+        async with self.scheduled_navigation_lock:
+            reasons = self.scheduledNavigations.pop(originFrameStatus.get('UID'), {"reason": "user"})
+            if not reasons:
+                print(f"[+ debugging] No navigation request for frame navigation: {originFrameStatus.get('UID')}")
+                reasons = {
+                    "reason": "user"
+                }
+        async with self.frame_status_lock:
+            if not originFrameStatus:
+                print(f"[+ Debugging] No origin frame found with frameId: {frameId}")
+                return None
+            self.frameStatusPool[frameId]['UID'] = uuid.uuid4().__str__()
+            self.frameStatusPool[frameId]['contactedDomains'] = set()
+            self.frameStatusPool[frameId]['scriptStatus'] = {}
+            self.frameStatusPool[frameId]['url'] = urlparse(url = event_.get('url'))._asdict()
+            self.frameStatusPool[frameId]['loaderId'] = event_.get('loaderId')
+
+        _msg = {
+            "frameUID": self.frameStatusPool[frameId]['UID'],
+            "frameId": frameId,
+            "originFrameUID": originFrameStatus.get('UID'),
+            "originFrameId": frameId,
+            "frameInfo": deepcopy(self.frameStatusPool[frameId])
         }
-        event_["frame"] = extractedFrame
-        event_["targetId"] = targetId
+        _msg['frameInfo'].pop('contactedDomains')
+        _msg['frameInfo'].pop('scriptStatus')
+
         self.logEvent(
-            msg = json.dumps(event_),
-            origin = "[Frame Navigate To]"
+            msg = json.dumps(_msg),
+            origin = f"[Frame Navigate by {self.initiator_map.get(reasons.get('reason'))}]"
         )
+        return None
+
+# Seal Done First 
+class frameRequestNavigationHandler(
+    Handler,
+    interested_event = "Page.frameRequestNavigation",
+    output_events = []
+):
+    _INSTANCE = None
+
+    def __init__(self) -> None:
+        self.reason_map = {
+            "httpHeaderRefreash": "http",
+            "scriptInitiated": "script",
+            "metaTagRefresh": "html"
+        }
+        return None
+    
+    async def handle(self, msg: Events.Page.frameRequestNavigation) -> None:
+        """
+        1. Add event to scheduledNavigations
+        """
+        event_ = msg.get('params')
+        async with self.frame_status_lock:
+            frameUID = self.frameStatusPool.get(event_.get('frameId')).get('UID')
+        
+        if not frameUID:
+            frameUID = event_.get('frameId')
+            pass
+        async with self.scheduled_navigation_lock:
+            self.scheduledNavigations[frameUID] = {
+                "reason": reason if (reason := (self.reason_map.get(event_.get('reason'), None))) else "user",
+                "disposition": None
+            }
         return None

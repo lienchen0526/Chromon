@@ -1,5 +1,5 @@
 import chrometypes as Types
-from typing import TypedDict, Optional, Literal, Any
+from typing import Type, TypedDict, Optional, Literal, Any
 
 class Target(object):
     targetCreated = TypedDict(
@@ -129,6 +129,22 @@ class Page(object):
                 "documentopened",
                 {
                     "frame": Types.Page.Frame
+                }
+            )
+        }
+    )
+    frameRequestNavigation = TypedDict(
+        "frameRequestNavigation",
+        {
+            "method": Literal["Page.frameRequestNavigation"],
+            "sessionId": Types.Target.SessionID,
+            "params": TypedDict(
+                "framerequestnavigation",
+                {
+                    "frameId": Types.Page.FrameId,
+                    "reason": Types.Page.ClientNavigationReason,
+                    "url": str,
+                    "disposition": Types.Page.ClientNavigationDisposition
                 }
             )
         }

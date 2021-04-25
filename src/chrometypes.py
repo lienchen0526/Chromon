@@ -10,7 +10,28 @@ class Network(object):
 class Page(object):
     FrameId = str
     AdFrameType = Literal['none', 'child', 'root']
-    SecureContextType = Literal['Secure', 'SecureLocalhost', 'InsecureScheme', 'InsecureAncestor']
+    SecureContextType = Literal[
+        'Secure', 
+        'SecureLocalhost', 
+        'InsecureScheme', 
+        'InsecureAncestor'
+    ]
+    ClientNavigationReason = Literal[
+        'formSubmissionGet', 
+        'formSubmissionPost', 
+        'httpHeaderRefresh', 
+        'scriptInitiated', 
+        'metaTagRefresh', 
+        'pageBlockInterstitial', 
+        'reload', 
+        'anchorClick'
+    ]
+    ClientNavigationDisposition = Literal[
+        'currentTab', 
+        'newTab', 
+        'newWindow', 
+        'download'
+    ]
     CrossOriginIsolatedContextType = Literal\
     [
         'Isolated', 
