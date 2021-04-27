@@ -29,7 +29,8 @@ class ChroMo(object):
         self.logger = Logger(
             dir_ = args.logdir,
             username = args.username,
-            tag = args.tag
+            tag = args.tag,
+            strict_form = args.strictlog
         )
         self.handler_host = Handler(
             interface = self.chrome,
@@ -120,5 +121,6 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--tag", type = str, help = "Log tag for this audit worker")
     parser.add_argument("-u", "--username", type = str, help = "The username of the user using the browser")
     parser.add_argument("-d", "--logdir", type = str, help = "The directory that will store the audited event")
+    parser.add_argument("-s", "--strictlog", type = bool, help = "Set if logging with json format output")
     args: argparse.Namespace = parser.parse_args()
     asyncio.run(main(args = args))

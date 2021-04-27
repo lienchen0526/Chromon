@@ -221,27 +221,41 @@ class Network(object):
     requestWillBeSent = TypedDict(
         "requestWillBeSent",
         {
-            "requestId": Types.Network.RequestId,
-            "loaderId": Types.Network.LoaderId,
-            "documentURL": str,
-            "request": Types.Network.Request,
-            "timestamp": Types.Network.MonotonicTime,
-            "wallTime": Types.Network.TimeSinceEpoch,
-            "initiator": Types.Network.Initiator,
-            "redirectResponse": Optional[Types.Network.Response],
-            "type": Optional[Types.Network.ResourceType],
-            "frameId": Optional[Types.Page.FrameId],
-            "hasUserGesture": Optional[bool]
+            "method": Literal["Network.requestWillBeSent"],
+            "sessionId": Optional[Types.Target.SessionID],
+            "params": TypedDict(
+                "requestwillbesent",
+                {
+                    "requestId": Types.Network.RequestId,
+                    "loaderId": Types.Network.LoaderId, # https://www.chromium.org/developers/design-documents/multi-process-resource-loading
+                    "documentURL": str,
+                    "request": Types.Network.Request,
+                    "timestamp": Types.Network.MonotonicTime,
+                    "wallTime": Types.Network.TimeSinceEpoch,
+                    "initiator": Types.Network.Initiator,
+                    "redirectResponse": Optional[Types.Network.Response],
+                    "type": Optional[Types.Network.ResourceType],
+                    "frameId": Optional[Types.Page.FrameId],
+                    "hasUserGesture": Optional[bool]
+                }
+            )
         }
     )
     responseReceived = TypedDict(
         "responseReceived",
         {
-            "requestId": Types.Network.RequestId,
-            "loaderId": Types.Network.LoaderId,
-            "timestamp": Types.Network.MonotonicTime,
-            "type": Types.Network.ResourceType,
-            "response": Types.Network.Response,
-            "frameId": Optional[Types.Page.FrameId]
+            "method": Literal["Network.responseReceived"],
+            "sessionId": Types.Target.SessionID,
+            "params": TypedDict(
+                "responsereceived",
+                {
+                    "requestId": Types.Network.RequestId,
+                    "loaderId": Types.Network.LoaderId,
+                    "timestamp": Types.Network.MonotonicTime,
+                    "type": Types.Network.ResourceType,
+                    "response": Types.Network.Response,
+                    "frameId": Optional[Types.Page.FrameId]
+                }
+            )
         }
     )

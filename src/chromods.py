@@ -6,7 +6,8 @@ ScriptInfo = TypedDict(
     "scriptinfo",
     {
         "domain": str,
-        "contentHash": str
+        "contentHash": str,
+        "contactedDomains": Set[str]
     }
 )
 

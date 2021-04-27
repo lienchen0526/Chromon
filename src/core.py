@@ -122,7 +122,7 @@ class ChromeBridge(object):
 
 class Logger(object):
     
-    def __init__(self, dir_: Optional[str] = None, username: Optional[str] = None, tag: Optional[str] = None, stdout: Optional[bool] = False) -> None:
+    def __init__(self, dir_: Optional[str] = None, username: Optional[str] = None, tag: Optional[str] = None, stdout: Optional[bool] = False, strict_form: Optional[bool] = False) -> None:
         """Using `dir_` to specify the directory that the logging destination. 
         If `dir_` is not given, current working directory will be set.
         `stdout` will be used if `stdout` argument set to `True`.
@@ -137,6 +137,7 @@ class Logger(object):
         self.stdout = stdout
         self.fs = None
         self.onlogging = True
+        self.strict = strict_form
         if dir_:
             if not isinstance(dir_, str):
                 raise TypeError(f"dir_ should be type str, not {dir_}")
@@ -168,10 +169,19 @@ class Logger(object):
         
     
     def log(self, origin: str, event: str, debug: Optional[bool] = False) -> None:
+        if not self.onlogging:
+            return None
         now = datetime.now().isoformat()
+        if self.strict:
+            event = {
+                "event": origin,
+                "eventData": json.loads(event),
+                "timestamp": now
+            }
+            event = json.dumps(event)
         msg = " - ".join([now, origin, event])
-        if self.onlogging:
-            print(msg, file = self.fs)
+        print(msg, file = self.fs)
+
         if debug:
             print(msg)
         return None
@@ -258,7 +268,8 @@ class CliCmd(object):
                 "config": {
                     "show": None,
                     "set": None,
-                    "cd": None
+                    "cd": None,
+                    "strict": None
                 },
                 "pause": None,
                 "start": None
