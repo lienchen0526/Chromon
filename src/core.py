@@ -285,6 +285,9 @@ class CliCmd(object):
             "chrome": {
                 "config": None
             },
+            "memory": {
+                "usage": None
+            },
             "exit": None,
             "help": None
         }

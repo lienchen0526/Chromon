@@ -624,7 +624,7 @@ class TargetCreatedHandler(
 class targetInfoChangeHandler(
     Handler, 
     interested_event = "Target.targetInfoChanged",
-    output_events = ["[Target Update to]"]
+    output_events = ["[Frame Info Update to]"]
 ):
     _INSTANCE = None
 
@@ -639,6 +639,32 @@ class targetInfoChangeHandler(
         if not sess_id == msg.get('sessionId', None):
             return None
         t["url"] = urlparse(url = t["url"])._asdict()
+        if not t.get("type") in ['page', 'iframe']:
+            return None
+        
+        frameStatus: FrameStatus = self.frameStatusPool.get(t.get("targetId"))
+        if not frameStatus:
+            # Maybe urgent?
+            return None
+        
+        if (not frameStatus.get('title')) and frameStatus.get('url') == t.get('url'):
+            if t.get('title'):
+                self.frameStatusPool[t.get("targetId")]['title'] = t.get('title')
+            msg = {
+                "frameOriginUID": self.frameStatusPool[t.get("targetId")].pop("UID"),
+                "frameId": t.get("targetId")
+            }
+            self.frameStatusPool[t.get("targetId")]['UID'] = uuid.uuid4().__str__()
+            msg['frameNewUID'] = self.frameStatusPool[t.get("targetId")]['UID']
+            msg['frameInfo'] = deepcopy(self.frameStatusPool[t.get("targetId")])
+            msg['frameInfo'].pop('scriptStatus')
+            msg['frameInfo'].pop('contactedDomains')
+
+            self.logEvent(
+                msg = json.dumps(msg),
+                origin = "[Frame Info Update to]"
+            )
+
         well_msg = {
             "targetId": t.get('targetId'),
             "targetInfo": t
@@ -1258,7 +1284,7 @@ class frameSheduledNavigationHandler(
                 return None
             
             self.scheduledNavigations[frameUID] = {
-                "reason": reason if (reason := (self.reason_map.get(event_.get('reason'), None))) else "user",
+                "reason": reason if (reason := (self.reason_map.get(event_.get('reason'), None))) else "other",
                 "disposition": None
             }
         return None
