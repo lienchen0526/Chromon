@@ -2,6 +2,7 @@ import asyncio
 import argparse
 from asyncio.exceptions import CancelledError
 import sys, os
+import yaml
 import pyfiglet
 
 from core import ChromeBridge, Logger, CliCmd
@@ -17,20 +18,34 @@ class ChroMo(object):
         Args:
             args (argparse.Namespace): argument got from main function
         """
-        if not args.debugeehost:
-            args.debugeehost = "localhost"
-        if not args.debugeeport:
-            args.debugeeport = 9222
+        if args.yaml:
+            with open(args.yaml) as fd:
+                self.config: dict = yaml.safe_load(fd)
+        
+        if args.debugeehost:
+            self.config['target']['debugeehost'] = args.debugeehost
+        if args.debugeeport:
+            self.config['target']['debugeeport'] = args.debugeeport
+        if args.logdir:
+            self.config['logging']['local']['dir'] = args.logdir
+        if args.username:
+            self.config['logging']['hostname'] = args.username
+        if args.tag:
+            self.config['logging']['tag'] = args.tag
+        if args.strictlog:
+            self.config['logging']['strict'] = args.strictlog
         
         self.chrome = ChromeBridge(
-            host = args.debugeehost,
-            port = args.debugeeport
+            host = self.config['target']['debugeehost'],
+            port = self.config['target']['debugeeport']
         )
         self.logger = Logger(
-            dir_ = args.logdir,
-            username = args.username,
-            tag = args.tag,
-            strict_form = args.strictlog
+            dir_ = self.config['logging']['local']['dir'],
+            username = self.config['logging']['hostname'],
+            tag = self.config['logging']['tag'],
+            strict_form = self.config['logging']['strict'],
+            ifremote = self.config.get("logging").get('enable_remote', False),
+            **self.config.get('logging').get('remote')
         )
         self.handler_host = Handler(
             interface = self.chrome,
@@ -68,7 +83,7 @@ class ChroMo(object):
         self.attachToBrowser()
         print(f"[+ In {self.__class__.__name__}] browser attaching success")
 
-        asyncio.create_task(self.startCli())
+        tsk = asyncio.create_task(self.startCli())
 
         while True:
             msg = self.chrome.getReply()
@@ -122,5 +137,6 @@ if __name__ == '__main__':
     parser.add_argument("-u", "--username", type = str, help = "The username of the user using the browser")
     parser.add_argument("-d", "--logdir", type = str, help = "The directory that will store the audited event")
     parser.add_argument("-s", "--strictlog", type = bool, help = "Set if logging with json format output")
+    parser.add_argument("-y", "--yaml", type = str, help = "Set yaml file if you have. Notice that argument may override yaml setting")
     args: argparse.Namespace = parser.parse_args()
     asyncio.run(main(args = args))

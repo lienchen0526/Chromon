@@ -6,9 +6,17 @@ import websocket
 import time, json
 import asyncio
 import copy
-from typing import Type, Union, List, Dict, Any, Optional
+import aiohttp
+import requests
+from typing import Generator, Iterable, Type, Union, List, Dict, Any, Optional
+import json
+from functools import partial
+from itertools import tee
 
 import chrometypes as Types
+
+class JSON(object):
+    dumps = partial(json.dumps, default = lambda o: None)
 
 class ChromeBridge(object):
     """
@@ -122,7 +130,16 @@ class ChromeBridge(object):
 
 class Logger(object):
     
-    def __init__(self, dir_: Optional[str] = None, username: Optional[str] = None, tag: Optional[str] = None, stdout: Optional[bool] = False, strict_form: Optional[bool] = False) -> None:
+    def __init__(
+        self, 
+        dir_: Optional[str] = None, 
+        username: Optional[str] = None, 
+        tag: Optional[str] = None, 
+        stdout: Optional[bool] = False, 
+        strict_form: Optional[bool] = False,
+        ifremote: Optional[bool] = False,
+        **kwargs
+    ) -> None:
         """Using `dir_` to specify the directory that the logging destination. 
         If `dir_` is not given, current working directory will be set.
         `stdout` will be used if `stdout` argument set to `True`.
@@ -138,6 +155,7 @@ class Logger(object):
         self.fs = None
         self.onlogging = True
         self.strict = strict_form
+        self.ifremote = ifremote
         if dir_:
             if not isinstance(dir_, str):
                 raise TypeError(f"dir_ should be type str, not {dir_}")
@@ -165,6 +183,10 @@ class Logger(object):
             raise NotADirectoryError(f"{self.logdir} is not a directory")
         
         self.setLogFile(username = username, tag = tag)
+        if ifremote:
+            self.setLogRemote(kwargs)
+            self.checkRemoteAlive()
+        
         return None
         
     
@@ -172,13 +194,23 @@ class Logger(object):
         if not self.onlogging:
             return None
         now = datetime.now().isoformat()
-        if self.strict:
-            event = {
-                "event": origin,
+        if self.strict or self.ifremote:
+            evt_num, evt_name = origin.split(" - ")
+            structured_event: Dict[str, Any] = json.loads(event)
+            structured_event = {
+                "eventNumber": evt_num,
+                "eventName": evt_name,
                 "eventData": json.loads(event),
                 "timestamp": now
             }
-            event = json.dumps(event)
+            if self.strict:
+                event = json.dumps(structured_event)
+            if self.ifremote:
+                structured_event['fields'] = {}
+                structured_event['fields']['hostname'] = self.username
+                structured_event['fields']['logtag'] = self.tag
+                asyncio.create_task(self.logToRemote(structured_event))
+            
         msg = " - ".join([now, origin, event])
         print(msg, file = self.fs)
 
@@ -242,6 +274,39 @@ class Logger(object):
 
         return 0 if not self.setLogFile(username = self.username, tag = self.tag) else -1
 
+    def setLogRemote(self, kwargs) -> None:
+        scheme = kwargs.get('scheme', 'http')
+        usessl = kwargs.get('usessl', False)
+        host = kwargs.get('host', '192.168.50')
+        port = kwargs.get('port', 8080)
+
+        self.session = aiohttp.ClientSession()
+        self.remote_url = "".join(
+            [
+                scheme,
+                "s" if usessl else "",
+                "://",
+                host,
+                ":" + str(port)
+            ]
+        )
+        return None
+
+    def checkRemoteAlive(self) -> None:
+        if not self.remote_url:
+            raise NotImplementedError(f"[In {self.__class__.__name__}]: remote url not exists")
+        r = requests.head(self.remote_url)
+        if r.ok:
+            print(f"[In {self.__class__.__name__}]: Remote logging terminal health ok. Url: {self.remote_url}")
+        else:
+            print(f"[In {self.__class__.__name__}]: Remote logging terminal health not ok. Url: {self.remote_url}")
+        return None
+
+    async def logToRemote(self, msg: Dict[str, Any]) -> None:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url = self.remote_url, data = json.dumps(msg)) as rsp:
+                return rsp.ok
+
     @property
     def disableLogging(self) -> bool:
         self.onlogging = False
@@ -253,9 +318,11 @@ class Logger(object):
         self.onlogging = True
         return self.onlogging
 
-    def shutDown(self) -> bool:
+    async def shutDown(self) -> bool:
         if self.fs and not self.fs.closed:
             self.fs.close()
+        if self.session and not self.session.closed:
+            await self.session.close()
         return True
 
     def __exit__(self):
@@ -295,3 +362,11 @@ class CliCmd(object):
     @classmethod
     def getScheme(cls):
         return copy.deepcopy(cls._Cmd)
+
+
+def create_window(i: Iterable, window_size = 2):
+    iters = tee(i, window_size)
+    for i in range(1, window_size):
+        for each in iters[i:]:
+            next(each, None)
+    return zip(*iters)

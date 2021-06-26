@@ -200,7 +200,14 @@ class Debugger(object):
                     "endColumn": int,
                     "executionContextId": Types.Runtime.ExecutionContextId,
                     "hash": str,
-                    "executionContextAuxData": Optional[Any],
+                    "executionContextAuxData": TypedDict(
+                        "scriptexecontext",
+                        {
+                            "idDefault": bool,
+                            "type": str,
+                            "frameId": Types.Page.FrameId
+                        }
+                    ),
                     "isLiveEdit": Optional[bool], #Experimental
                     "sourceMapURL": Optional[str],
                     "hasSourceURL": Optional[bool],
