@@ -1,0 +1,38 @@
+version: 0.1
+
+cli: True
+target:
+  debugeehost: localhost
+  debugeeport: 9223
+logging:
+  hostname: lien
+  tag: browser_js_redirectionv2
+  strict: True
+  local:
+    dir: S:\var\logs\chromo
+    suffix: .log
+  enable_remote: False
+  remote:
+    servertype: logstash
+    scheme: http
+    usessl: False
+    host: 192.168.1.50
+    port: 8080
+  
+events:
+  active:
+    - Main Frame Created
+    - Sub-Frame Created
+    - Frame Info Update to
+    - Target Destroyed
+    - Frame Attach to Frame
+    - Script Create Sub-Frame
+    - File Download Start
+    - Frame Execute Script
+    - Script Initiate Remote Script
+    - Script Reference to
+    - Frame Navigate by Script
+    - Frame Navigate by HTTP
+    - Frame Navigate by HTML
+    - Frame Navigate by User
+    - Frame Navigate by Other
