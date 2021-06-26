@@ -67,15 +67,22 @@ class ChromeBridge(object):
         """Connect to Global debugee (Browser) itself
         """
         _endpoint = "/json/version"
-        _rsp = requests.get(
-            url = f"{self.debuggee_dest}{_endpoint}"
-        )
+        while True:
+            try:
+                _rsp = requests.get(
+                    url = f"{self.debuggee_dest}{_endpoint}"
+                )
+                break
+            except requests.exceptions.ConnectionError:
+                time.sleep(3)
+
         debugeeinfo: Types.Generic.GlobalDebugableInfo = json.loads(_rsp.text)
 
         self.ws: websocket.WebSocket = websocket.create_connection(
             url = debugeeinfo.get("webSocketDebuggerUrl")
         )
         self.ws.settimeout(self.wstimeout)
+        print(f"[+ In ChroMo] attach to browser success")
         return None
 
     def listTabs(self) -> List[Types.Generic.TabInfo]:
@@ -122,6 +129,9 @@ class ChromeBridge(object):
             _rply_obj: Dict["str", Any] = json.loads(_msg)
         except BlockingIOError:
             _rply_obj = {}
+        except websocket._exceptions.WebSocketConnectionClosedException:
+            _rply_obj = {}
+            self.connectBrowser()
         return _rply_obj
     
     def shutDown(self) -> bool:

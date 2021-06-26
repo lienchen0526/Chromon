@@ -1444,6 +1444,9 @@ class requestWillBeSentHandler(
             # Try to emit [Script Initiate Contact to]
             stack_ = initiator.get("stack")
             s = stack_
+            if not s:
+                print(f"[+ Debugging] In {self.__class__.__name__}: initiator is script but no stack found. Event message is: {json.dumps(event_, indent = 4)}")
+                pass
             callframes = s.get("callFrames")
             while (s := s.get('parent')):
                 callframes.extend(s.get('callFrames'))
