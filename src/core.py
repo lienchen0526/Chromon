@@ -1,5 +1,5 @@
 import os, sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from asyncio.exceptions import InvalidStateError
 import requests
 import websocket
@@ -163,9 +163,11 @@ class Logger(object):
         super().__init__()
         self.stdout = stdout
         self.fs = None
-        self.onlogging = True
-        self.strict = strict_form
-        self.ifremote = ifremote
+        self.onlogging: bool = True
+        self.strict: bool = strict_form
+        self.ifremote: bool = ifremote
+        self.time_range: timedelta = timedelta(hours = 24)
+        self.current_time: datetime = datetime.now()
         if dir_:
             if not isinstance(dir_, str):
                 raise TypeError(f"dir_ should be type str, not {dir_}")
@@ -185,14 +187,16 @@ class Logger(object):
             self.tag = tag
         else:
             self.tag = "default"
-        
+
         if not os.path.exists(self.logdir):
             raise FileNotFoundError(f"directory not found: {self.logdir}")
 
         if not os.path.isdir(self.logdir):
             raise NotADirectoryError(f"{self.logdir} is not a directory")
         
-        self.setLogFile(username = username, tag = tag)
+        t = f"{self.tag}-{self.current_time.date().isoformat()}"
+        self.setLogFile(username = self.username, tag = t)
+        asyncio.create_task(self.flush())
         if ifremote:
             self.setLogRemote(kwargs)
             self.checkRemoteAlive()
@@ -203,7 +207,15 @@ class Logger(object):
     def log(self, origin: str, event: str, debug: Optional[bool] = False) -> None:
         if not self.onlogging:
             return None
-        now = datetime.now().isoformat()
+        now: datetime = datetime.now()
+        now_iso: str = now.isoformat()
+
+        if now - self.current_time > self.time_range:
+            pass
+            #self.current_time: datetime = now
+            #t = f"{self.tag}-{self.current_time.date().isoformat()}"
+            #self.setLogFile(username = self.username, tag = t)
+        
         if self.strict or self.ifremote:
             evt_num, evt_name = origin.split(" - ")
             structured_event: Dict[str, Any] = json.loads(event)
@@ -211,7 +223,7 @@ class Logger(object):
                 "eventNumber": evt_num,
                 "eventName": evt_name,
                 "eventData": json.loads(event),
-                "timestamp": now
+                "timestamp": now_iso
             }
             if self.strict:
                 event = json.dumps(structured_event)
@@ -221,7 +233,7 @@ class Logger(object):
                 structured_event['fields']['logtag'] = self.tag
                 asyncio.create_task(self.logToRemote(structured_event))
             
-        msg = " - ".join([now, origin, event])
+        msg = " - ".join([now_iso, origin, event])
         print(msg, file = self.fs)
 
         if debug:
@@ -246,9 +258,6 @@ class Logger(object):
 
         if not isinstance(tag, str):
             raise TypeError(f"tag should be str, not {type(tag)}")
-        
-        self.username = username
-        self.tag = tag
 
         self.new_file = "".join([username, "-", tag, ".log"])
         full_path = os.path.join(self.logdir, self.new_file)
@@ -316,6 +325,12 @@ class Logger(object):
         async with aiohttp.ClientSession() as session:
             async with session.post(url = self.remote_url, data = json.dumps(msg)) as rsp:
                 return rsp.ok
+
+    async def flush(self):
+        while True:
+            await asyncio.sleep(delay = 60)
+            if self.fs and not self.fs.closed:
+                self.fs.flush()
 
     @property
     def disableLogging(self) -> bool:

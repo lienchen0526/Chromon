@@ -951,7 +951,7 @@ class fileChooserOpenedHandler(
     async def handle(self, msg: Events.Page.fileChooserOpened) -> None:
         event_ = msg.get('params')
         self.logEvent(
-            msg = event_, 
+            msg = json.dumps(event_),
             origin = "[File Chooser Opened]",
             debug = True
         )
@@ -1097,7 +1097,8 @@ class scriptParsedHandler(
         # Emit [Frame Execute Script]
         exe_msg = {
             "frameUID": uid if (uid := (frameStatus.get('UID'))) else tid,
-            "Script": deepcopy(scriptInfo)
+            "Script": deepcopy(scriptInfo),
+            "ScriptId": sid
         }
         if not _scheme.endswith("-extension"):
             self.logEvent(
