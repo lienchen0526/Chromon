@@ -9,7 +9,7 @@ logging:
   tag: browser_js_redirectionv2
   strict: True
   local:
-    dir: S:\var\logs\chromo
+    dir: C:\Temp
     suffix: .log
   enable_remote: False
   remote:
