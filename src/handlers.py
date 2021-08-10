@@ -624,7 +624,7 @@ class TargetCreatedHandler(
         t: Types.Target.TargetInfo = msg.get('params').get('targetInfo')
         t["url"] = urlparse(url = t["url"])._asdict()
 
-        if not t.get('attached'):
+        if t["url"].get('scheme') != '':
             if t.get('type') in Types.Target.ValidTypes:
                 async with self.trgt_session_lock:
                     _pending = self._target_session.get(t.get("targetId"), None)
